@@ -1,0 +1,88 @@
+.dash-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.dash-service {
+  font-size: 11px; color: var(--gold);
+  letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px;
+}
+.dash-title { font-size: clamp(18px, 2.5vw, 26px); color: var(--text); }
+
+.dash-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 20px;
+}
+
+/* Gráfico de barras */
+.dash-chart {
+  display: flex; gap: 8px; align-items: flex-end;
+  height: 110px; margin-bottom: 10px;
+}
+.dash-chart__col {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 4px; flex: 1; height: 100%;
+}
+.dash-chart__bar-wrap { flex: 1; display: flex; align-items: flex-end; width: 100%; }
+.dash-chart__bar {
+  width: 100%;
+  background: linear-gradient(to top, var(--gold-dark), var(--gold));
+  border-radius: 3px 3px 0 0; min-height: 4px;
+}
+.dash-chart__label { font-size: 9px; color: var(--text-dim); text-align: center; }
+.dash-chart__label.highlight { color: var(--gold); font-weight: 700; }
+.dash-chart__note { font-size: 10px; color: var(--text-dim); margin-bottom: 16px; }
+
+/* Barras por sede */
+.dash-venues { display: flex; flex-direction: column; gap: 12px; }
+.dash-venue__header {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 6px; flex-wrap: wrap;
+}
+.dash-venue__name { font-size: 12px; color: var(--text-muted); flex: 1; }
+.dash-venue__total { font-size: 13px; color: var(--gold); font-family: var(--font-serif); }
+.dash-venue__bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.dash-venue__fill {
+  height: 100%;
+  background: linear-gradient(to right, var(--gold-dark), var(--gold));
+  border-radius: 2px;
+}
+
+/* Alertas */
+.dash-alerts { display: flex; flex-direction: column; gap: 10px; }
+.dash-alert {
+  display: flex; gap: 12px;
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 12px;
+}
+.dash-alert__dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--gold); flex-shrink: 0; margin-top: 4px;
+}
+.dash-alert__label {
+  font-size: 10px; font-weight: 600; color: var(--gold);
+  margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.dash-alert__msg { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 3px; }
+.dash-alert__sub { font-size: 10px; color: var(--text-dim); }
+
+/* Platos estrella */
+.dash-dishes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.dash-dish {
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 8px; overflow: hidden;
+}
+.dash-dish__img-wrap { position: relative; height: 130px; }
+.dash-dish__img { height: 100%; width: 100%; object-fit: cover; }
+.dash-dish__stock {
+  position: absolute; top: 8px; right: 8px;
+  font-size: 10px; font-weight: 600; color: #0f0c07;
+  background: var(--gold); padding: 3px 8px; border-radius: 3px;
+}
+.dash-dish__body { padding: 12px; }
+.dash-dish__name { font-size: 13px; color: var(--text); font-weight: 500; margin-bottom: 4px; }
+.dash-dish__price { font-family: var(--font-serif); font-size: 17px; color: var(--gold); margin-bottom: 4px; }
+.dash-dish__meta { font-size: 11px; color: var(--text-muted); }
