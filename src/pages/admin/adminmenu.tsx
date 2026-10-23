@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import AdminLayout from '../../components/AdminLayout'
+import AdminLayout from '../../components/adminlayout'
 import './AdminMenu.css'
 
 const dishes = [

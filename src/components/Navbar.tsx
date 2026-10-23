@@ -1,31 +1,25 @@
-// REEMPLAZA tu archivo: src/components/Navbar.tsx
-import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
+import { useAuth } from '../context/AuthContext'
 import './Navbar.css'
 
-export default function Navbar() {
-  const { user, profile, logout } = useAuth()
-  const { count } = useCart()
-  const location = useLocation()
-  const navigate = useNavigate()
-  const [userMenuOpen, setUserMenuOpen] = useState(false)
+const links = [
+  { to: '/menu',        label: 'Menú' },
+  { to: '/reservas',    label: 'Reservas' },
+  { to: '/ubicaciones', label: 'Ubicaciones' },
+  { to: '/contacto',    label: 'Contacto' },
+]
 
-  const links = [
-    { to: '/menu',        label: 'Menú' },
-    { to: '/reservas',    label: 'Reservas' },
-    { to: '/ubicaciones', label: 'Ubicaciones' },
-    { to: '/contacto',    label: 'Contacto' },
-  ]
+export default function Navbar() {
+  const { pathname }    = useLocation()
+  const navigate        = useNavigate()
+  const { count }       = useCart()
+  const { user, logout } = useAuth()
 
   const handleLogout = async () => {
-    setUserMenuOpen(false)
     await logout()
     navigate('/login')
   }
-
-  const displayName = profile?.name || user?.displayName || user?.email?.split('@')[0] || ''
 
   return (
     <header className="navbar">
@@ -39,7 +33,7 @@ export default function Navbar() {
             <Link
               key={l.to}
               to={l.to}
-              className={`navbar__link ${location.pathname === l.to ? 'navbar__link--active' : ''}`}
+              className={`navbar__link ${pathname === l.to ? 'navbar__link--active' : ''}`}
             >
               {l.label}
             </Link>
@@ -50,6 +44,7 @@ export default function Navbar() {
         <div className="navbar__actions">
           <span className="navbar__lang">ES</span>
 
+          {/* Carrito */}
           <Link to="/carrito" className="navbar__cart">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
@@ -59,40 +54,17 @@ export default function Navbar() {
             {count > 0 && <span className="navbar__cart-badge">{count}</span>}
           </Link>
 
-          {/* Usuario autenticado */}
+          {/* Usuario: si está logueado muestra perfil y logout, si no muestra login */}
           {user ? (
-            <div className="navbar__user-wrap">
-              <button
-                className="navbar__user-btn"
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
-              >
-                {user.photoURL
-                  ? <img src={user.photoURL} alt={displayName} className="navbar__user-avatar" />
-                  : <span className="navbar__user-initial">{displayName.charAt(0).toUpperCase()}</span>
-                }
-                <span className="navbar__user-name">{displayName.split(' ')[0]}</span>
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="var(--text-muted)">
-                  <path d="M2 4l3 3 3-3" stroke="currentColor" strokeWidth="1.2" fill="none"/>
-                </svg>
-              </button>
-
-              {userMenuOpen && (
-                <div className="navbar__user-menu">
-                  <Link to="/perfil" className="navbar__user-menu-item" onClick={() => setUserMenuOpen(false)}>
-                    👤 Mi Perfil
-                  </Link>
-                  <Link to="/perfil" className="navbar__user-menu-item" onClick={() => setUserMenuOpen(false)}>
-                    🧾 Mis Pedidos
-                  </Link>
-                  <Link to="/perfil" className="navbar__user-menu-item" onClick={() => setUserMenuOpen(false)}>
-                    ⭐ Membresía
-                  </Link>
-                  <div className="navbar__user-menu-divider" />
-                  <button className="navbar__user-menu-item navbar__user-menu-logout" onClick={handleLogout}>
-                    Cerrar Sesión →
-                  </button>
+            <div className="navbar__user-menu">
+              <Link to="/perfil" className="navbar__user-btn" title={user.displayName || user.email || 'Mi perfil'}>
+                <div className="navbar__user-avatar">
+                  {(user.displayName || user.email || 'U')[0].toUpperCase()}
                 </div>
-              )}
+              </Link>
+              <button className="navbar__logout" onClick={handleLogout} title="Cerrar sesión">
+                ⎋
+              </button>
             </div>
           ) : (
             <Link to="/login" className="navbar__icon" title="Iniciar sesión">

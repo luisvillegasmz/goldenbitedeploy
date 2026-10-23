@@ -1,6 +1,6 @@
-import { ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import './AdminLayout.css'
+import './adminlayout.css'
 
 const nav = [
   { to: '/admin',           icon: '⊞', label: 'Dashboard' },
