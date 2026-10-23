@@ -1,22 +1,37 @@
 import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
 import './adminlayout.css'
 
 const nav = [
-  { to: '/admin',           icon: '⊞', label: 'Dashboard' },
-  { to: '/admin/reservas',  icon: '📅', label: 'Reservations' },
-  { to: '/admin/menu',      icon: '✕', label: 'Culinary Menus' },
-  { to: '/admin/bodega',    icon: '🍷', label: 'Wine Cellar' },
-  { to: '/admin/usuarios',  icon: '👥', label: 'Staff & Tables' },
-  { to: '/admin/analytics', icon: '📊', label: 'Analytics' },
+  { to: '/admin',             icon: '⊞', label: 'Dashboard' },
+  { to: '/admin/menu',        icon: '🍽', label: 'Menú' },
+  { to: '/admin/promociones', icon: '🏷', label: 'Promociones' },
+  { to: '/admin/usuarios',    icon: '👥', label: 'Usuarios' },
+  { to: '/admin/analytics',   icon: '📊', label: 'Analytics' },
 ]
 const bottom = [
-  { to: '/admin/settings', icon: '⚙', label: 'Location Settings' },
-  { to: '/admin/audit',    icon: '🕐', label: 'Audit Log' },
+  { to: '/', icon: '↩', label: 'Volver al Sitio' },
 ]
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  const { pathname } = useLocation()
+  const { pathname }      = useLocation()
+  const navigate          = useNavigate()
+  const { user, profile, logout } = useAuth()
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login')
+  }
+
+  // Iniciales para el avatar (ej: "Luis García" → "LG")
+  const initials = (profile?.displayName ?? user?.email ?? 'Admin')
+    .split(' ')
+    .slice(0, 2)
+    .map(w => w[0].toUpperCase())
+    .join('')
+
   const isActive = (p: string) =>
     p === '/admin' ? pathname === p : pathname.startsWith(p)
 
@@ -64,13 +79,32 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           ))}
         </nav>
 
+        // Después — datos reales + botón de logout:
         <div className="admin-sidebar__user">
-          <div className="admin-sidebar__user-avatar">JM</div>
-          <div>
-            <p className="admin-sidebar__user-name">Jean-Luc Moreau</p>
-            <p className="admin-sidebar__user-role">Grand Maître D'</p>
+          <div className="admin-sidebar__user-avatar">{initials}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p className="admin-sidebar__user-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {profile?.displayName ?? user?.email ?? 'Admin'}
+            </p>
+            <p className="admin-sidebar__user-role">
+              Nivel {profile?.membership ?? '—'}
+            </p>
           </div>
-          <span className="admin-sidebar__user-dot" />
+          <button
+            onClick={handleLogout}
+            title="Cerrar sesión"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--text-dim)',
+              fontSize: '16px',
+              padding: '4px',
+              flexShrink: 0,
+            }}
+          >
+            ⎋
+          </button>
         </div>
       </aside>
 

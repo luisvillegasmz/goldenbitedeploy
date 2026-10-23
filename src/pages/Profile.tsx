@@ -1,3 +1,4 @@
+import { useAuth } from '../context/AuthContext'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import './Profile.css'
@@ -40,6 +41,10 @@ const tabs = [
 
 export default function Profile() {
   const [activeTab, setActiveTab] = useState(0)
+  const { user, profile } = useAuth()
+
+  // Mientras carga o no hay sesión, no renderizamos nada raro
+  if (!user || !profile) return null
 
   return (
     <main className="profile-page">
@@ -56,20 +61,20 @@ export default function Profile() {
                   <p className="membership-card__brand">Golden Bite</p>
                   <p className="membership-card__sub">Club Privé Haute Cuisine</p>
                 </div>
-                <span className="badge">Nivel Noir</span>
+                <span className="badge">Nivel {profile.membership}</span>
               </div>
               <div className="membership-card__holder">
                 <p style={{ fontSize:'10px', color:'var(--text-muted)', marginBottom:'2px' }}>Titular de la Membresía</p>
-                <p style={{ fontSize:'18px', color:'var(--text)', fontFamily:'var(--font-serif)' }}>Alejandro Valdés</p>
+                <p style={{ fontSize:'18px', color:'var(--text)', fontFamily:'var(--font-serif)' }}>{profile.displayName}</p>
               </div>
               <div className="membership-card__meta">
                 <div>
                   <p style={{ fontSize:'9px', color:'var(--text-muted)' }}>N° Socio</p>
-                  <p style={{ fontSize:'13px', color:'var(--gold)' }}>#GB-8921</p>
+                  <p style={{ fontSize:'13px', color:'var(--gold)' }}>{user.uid.slice(0, 8).toUpperCase()}</p>
                 </div>
                 <div>
                   <p style={{ fontSize:'9px', color:'var(--text-muted)' }}>Miembro Desde</p>
-                  <p style={{ fontSize:'13px', color:'var(--text)' }}>Oct 2023</p>
+                  <p style={{ fontSize:'13px', color:'var(--text)' }}>{profile.memberSince}</p>
                 </div>
               </div>
               <p style={{ fontSize:'9px', color:'var(--text-dim)', marginTop:'10px' }}>
@@ -85,12 +90,11 @@ export default function Profile() {
                 </p>
                 <span style={{ fontSize:'14px', cursor:'pointer' }}>👁</span>
               </div>
-              <p className="profile-points">
-                1.450 <span>Puntos</span>
-              </p>
+              <p className="profile-points">{profile.points.toLocaleString('es-ES')} <span>Puntos</span></p>
+              
               <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'10px' }}>
                 <span style={{ fontSize:'12px', color:'var(--text-muted)' }}>Equivalente canjeable:</span>
-                <span style={{ fontSize:'12px', color:'var(--gold)', fontWeight:600 }}>145 €</span>
+                <span style={{ fontSize:'12px', color:'var(--gold)', fontWeight:600 }}>{(profile.points * 0.1).toFixed(2)} €</span>
               </div>
               <p style={{ fontSize:'11px', color:'var(--text-dim)', marginBottom:'14px', lineHeight:'1.5' }}>
                 Aplicable en experiencias degustación, botellas de guarda o servicios de maridaje exclusivo.
