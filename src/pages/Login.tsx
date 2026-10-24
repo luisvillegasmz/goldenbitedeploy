@@ -1,4 +1,6 @@
-// REEMPLAZA tu archivo: src/pages/Login.tsx
+import { getDashboardRoute } from '../context/AuthContext'
+import type { UserProfile }  from '../context/AuthContext'
+
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { signInWithEmailAndPassword } from 'firebase/auth'
@@ -26,8 +28,13 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      await signInWithEmailAndPassword(auth, email, password)
-      navigate(from, { replace: true })
+      const result = await signInWithEmailAndPassword(auth, email, password)
+      const snap   = await import('firebase/firestore').then(({ doc, getDoc }) =>
+        getDoc(doc(db, 'usuarios', result.user.uid))
+      )
+      const profile = snap.data() as UserProfile
+      const dest    = profile?.role ? getDashboardRoute(profile.role) : from
+      navigate(dest, { replace: true })
     } catch (err: any) {
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setError('Correo o contraseña incorrectos.')
@@ -46,7 +53,8 @@ export default function Login() {
     setLoading(true)
     try {
       await signInWithGoogle()
-      navigate(from, { replace: true })
+      // signInWithGoogle ya crea el perfil; los clientes nuevos van al home
+      navigate(from === '/login' ? '/' : from, { replace: true })
     } catch (err: any) {
       setError('Error al iniciar sesión con Google.')
     } finally {

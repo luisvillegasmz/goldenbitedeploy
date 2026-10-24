@@ -1,179 +1,285 @@
-// src/data/dishes.ts  ← Crea esta carpeta y archivo
-
 export interface Dish {
-  id: string
-  name: string
-  category: string
-  price: number
-  badges: string[]
-  desc: string
-  fullDesc: string
-  options: string[]
-  image: string
-  images: string[]
+  id:              string
+  name:            string
+  category:        string
+  price:           number
+  badges:          string[]
+  desc:            string
+  fullDesc:        string
+  options:         string[]
+  image:           string
+  images:          string[]
   cookingOptions?: { id: string; label: string; sublabel: string }[]
-  extras?: { id: string; label: string; desc: string; price: number }[]
-  pairing?: { name: string; price: number; desc: string }
-  allergens?: string[]
+  extras?:         { id: string; label: string; desc: string; price: number }[]
+  allergens?:      string[]
 }
 
+export const categories = [
+  'Todos',
+  'Entradas',
+  'Sopas y Caldos',
+  'Parrilla',
+  'Platos Principales',
+  'Postres',
+  'Bebidas',
+]
+
+// Términos de cocción para carnes
+const terminosCarne = [
+  { id: 'poco',  label: 'Poco cocido',   sublabel: '(3/4)' },
+  { id: 'medio', label: 'Término medio', sublabel: '(Punto)' },
+  { id: 'bien',  label: 'Bien cocido',   sublabel: '(3/4+)' },
+]
+
 export const dishes: Dish[] = [
+  // ── ENTRADAS ─────────────────────────────────────────────────────────────
   {
-    id: '1',
-    name: 'The Golden Truffle Burger',
-    category: 'Hamburguesas de Autor',
-    price: 28.5,
-    badges: ['Gourmet', 'Chef Pick'],
-    desc: '220g de Black Angus certificado, láminas de trufa negra Perigord, queso Raclette suizo fundido...',
+    id: 'e1',
+    name: 'Patacones con Hogao',
+    category: 'Entradas',
+    price: 14000,
+    badges: ['Vegetariano', 'Popular'],
+    desc: 'Patacones de plátano verde crujientes con hogao casero de tomate y cebolla larga.',
     fullDesc:
-      'Medallón de 220g de lomo bajo Black Angus certificado, madurado 21 días en cámara propia. Fundido con queso Raclette del Valais traído semanalmente, confitura de chalotas al oporto y lluvia generosa de trufa negra Melanosporum fresca de temporada. Servido sobre pan brioche horneado a diario con mantequilla francesa AOP.',
-    options: ['Poco Hecho', 'Al Punto', 'Hecho'],
-    image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&q=80',
-      'https://images.unsplash.com/photo-1565299507177-b0ac66763828?w=800&q=80',
-      'https://images.unsplash.com/photo-1553979459-d2229ba7433b?w=800&q=80',
-      'https://images.unsplash.com/photo-1550317138-10000687a72b?w=800&q=80',
-    ],
-    cookingOptions: [
-      { id: 'poco', label: 'Poco Hecho', sublabel: 'Sabor Intenso' },
-      { id: 'punto', label: 'Al Punto', sublabel: 'Jugoso' },
-      { id: 'hecho', label: 'Hecho', sublabel: 'Firme' },
-    ],
+      'Plátano verde de la región, aplastado y frito hasta quedar crujiente por fuera y suave por dentro. Acompañado de hogao casero preparado con tomate chonto, cebolla larga y cilantro fresco.',
+    options: [],
+    image: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=600&q=80',
+    images: ['https://images.unsplash.com/photo-1551024506-0bccd828d307?w=800&q=80'],
     extras: [
-      { id: 'trufa', label: 'Trufa Negra Melanosporum fresca', desc: 'Laminada al momento en mesa (+5 gramos)', price: 8 },
-      { id: 'foie', label: 'Escalope de Foie Gras Poêlé', desc: 'Marcado al soplete con reducción de Pedro Ximénez', price: 6 },
-      { id: 'raclette', label: 'Doble Fundido de Raclette Suizo', desc: 'Curación alpina de 6 meses', price: 4 },
+      { id: 'queso', label: 'Queso costeño', desc: 'Queso costeño rallado por encima', price: 2500 },
+      { id: 'aji',   label: 'Ají casero',    desc: 'Ají picante preparado en casa',    price: 1000 },
     ],
-    pairing: {
-      name: 'Ribera del Duero Reserva 2018',
-      price: 14,
-      desc: 'Notas de roble tostado, ciruela negra madura y final balsámico de gran estructura mineral.',
-    },
-    allergens: ['Gluten', 'Lácteos', 'Huevo'],
-  },
-  {
-    id: '2',
-    name: 'Ribeye Añejo 45 Días',
-    category: 'Cortes & Grill',
-    price: 46,
-    badges: ['Sin Gluten', 'Dry Aged'],
-    desc: 'Corte de vaca vieja rubia gallega con 45 días de maduración en seco (Dry Aging). Asado al...',
-    fullDesc:
-      'Corte de vaca vieja rubia gallega con 45 días de maduración en seco en nuestra cámara de Dry Aging. Asado al josper de encina a temperatura extrema para sellar los jugos. Servido con sal Maldon y reducción de su propio jugo. Una experiencia carnívora sin igual.',
-    options: ['Pimientos Padrón', 'Puré Robuchon'],
-    image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1544025162-d76694265947?w=800&q=80',
-      'https://images.unsplash.com/photo-1529694157872-4e0c0f3b238b?w=800&q=80',
-      'https://images.unsplash.com/photo-1600891964092-4316c288032e?w=800&q=80',
-    ],
-    cookingOptions: [
-      { id: 'poco', label: 'Poco Hecho', sublabel: 'Rojo Intenso' },
-      { id: 'punto', label: 'Al Punto', sublabel: 'Rosado' },
-      { id: 'hecho', label: 'Hecho', sublabel: 'Firme' },
-    ],
-    extras: [
-      { id: 'foie', label: 'Escalope de Foie Gras', desc: 'Marcado al soplete sobre el corte', price: 9 },
-      { id: 'sal', label: 'Sal del Himalaya Ahumada', desc: 'Cristales en pirámide para finalizar', price: 3 },
-    ],
-    pairing: {
-      name: 'Priorat Gran Reserva 2016',
-      price: 18,
-      desc: 'Garnacha y Cariñena sobre pizarra. Potente, mineral y elegante con final eterno.',
-    },
     allergens: ['Lácteos'],
   },
   {
-    id: '3',
-    name: 'Tartar de Wagyu con Caviar',
-    category: 'Entrantes Exclusivos',
-    price: 34,
-    badges: ['A5 Imperial'],
-    desc: 'Solomillo de Wagyu japonés cortado a cuchillo, emulsión de yema curada en ponzu, 10g de...',
+    id: 'e2',
+    name: 'Empanadas (x3)',
+    category: 'Entradas',
+    price: 12000,
+    badges: ['Popular'],
+    desc: 'Tres empanadas fritas de pipián, carne o mixtas. Con ají de maní casero.',
     fullDesc:
-      'Solomillo de Wagyu japonés A5 cortado a cuchillo en el momento, aderezado con emulsión de yema curada en ponzu, alcaparras de Pantelleria, chalota encurtida y mostaza Dijon antigua. Coronado con 10g de caviar Oscietra. Una preparación de máximo respeto al producto.',
-    options: ['+ Caviar (+12€)', 'Receta Estándar'],
-    image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80',
-      'https://images.unsplash.com/photo-1607532941433-304659e8198a?w=800&q=80',
-    ],
+      'Empanadas de masa de maíz rellenas a tu elección: pipián (papa con cebolla y ají), carne molida con papa, o mixtas. Fritas al momento hasta quedar doradas y crujientes. Acompañadas de ají de maní casero.',
+    options: ['Pipián', 'Carne', 'Mixtas'],
+    image: 'https://images.unsplash.com/photo-1604467794349-0b74285de7e7?w=600&q=80',
+    images: ['https://images.unsplash.com/photo-1604467794349-0b74285de7e7?w=800&q=80'],
+    allergens: ['Gluten', 'Maní'],
+  },
+
+  // ── SOPAS Y CALDOS ────────────────────────────────────────────────────────
+  {
+    id: 's1',
+    name: 'Ajiaco Santafereño',
+    category: 'Sopas y Caldos',
+    price: 28000,
+    badges: ['Tradicional'],
+    desc: 'Sopa de pollo con tres tipos de papa, guascas y mazorca. Servida con crema y alcaparras.',
+    fullDesc:
+      'Preparado con pollo de campo, papa pastusa, papa criolla y papa sabanera, aromatizado con guascas frescas. Servido con mazorca tierna, crema de leche y alcaparras al lado.',
+    options: [],
+    image: 'https://images.unsplash.com/photo-1547592180-85f173990554?w=600&q=80',
+    images: ['https://images.unsplash.com/photo-1547592180-85f173990554?w=800&q=80'],
     extras: [
-      { id: 'caviar', label: 'Extra Caviar Oscietra +10g', desc: 'De crianza en agua dulce de temperatura controlada', price: 12 },
-      { id: 'trufa', label: 'Ralladura de Trufa Blanca Alba', desc: 'De temporada, servida en mesa', price: 15 },
+      { id: 'presa', label: 'Presa extra de pollo', desc: 'Una presa adicional de pollo de campo', price: 6000 },
+      { id: 'crema', label: 'Crema de leche extra',  desc: 'Porción adicional de crema de leche',  price: 1500 },
     ],
-    pairing: {
-      name: 'Champagne Blanc de Blancs Grand Cru',
-      price: 22,
-      desc: 'Brioche tostado, cítricos frescos y minerales. Sublime contraste con la grasa del Wagyu.',
-    },
-    allergens: ['Huevo', 'Mostaza', 'Pescado'],
+    allergens: ['Lácteos'],
   },
   {
-    id: '4',
-    name: 'Papas Rústicas al Parmesano & Trufa',
-    category: 'Guarniciones Trufadas',
-    price: 14.5,
-    badges: ['Vegetariano', 'Sin Gluten'],
-    desc: 'Papas agrias confitadas en grasa de pato y fritas a tres cocciones, lluvia de Parmigiano Reggiano...',
+    id: 's2',
+    name: 'Sancocho de Gallina',
+    category: 'Sopas y Caldos',
+    price: 30000,
+    badges: ['Tradicional', 'Para compartir'],
+    desc: 'Gallina criolla cocinada a fuego lento con yuca, papa, mazorca y plátano verde.',
     fullDesc:
-      'Papas agrias confitadas en grasa de pato y fritas a tres cocciones para lograr el exterior más crujiente posible con interior cremoso. Terminadas con lluvia de Parmigiano Reggiano DOP 24 meses, aceite de trufa negra y cebollino fresco. La guarnición perfecta.',
-    options: ['Aioli Trufado', 'Brava Ahumada'],
-    image: 'https://images.unsplash.com/photo-1518013431117-eb1465fa5752?w=600&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1518013431117-eb1465fa5752?w=800&q=80',
-      'https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=800&q=80',
-    ],
+      'Gallina criolla cocinada por más de dos horas a fuego lento con yuca, papa pastusa, mazorca tierna y plátano verde. Servido con arroz blanco, aguacate y ají casero.',
+    options: [],
+    image: 'https://images.unsplash.com/photo-1509474722893-c3cf4b2ab4c8?w=600&q=80',
+    images: ['https://images.unsplash.com/photo-1509474722893-c3cf4b2ab4c8?w=800&q=80'],
     extras: [
-      { id: 'doble', label: 'Ración Doble', desc: 'Para compartir entre 2-3 personas', price: 10 },
+      { id: 'presa2',   label: 'Presa adicional', desc: 'Una presa más de gallina criolla', price: 7000 },
+      { id: 'aguacate', label: 'Aguacate',          desc: 'Media unidad de aguacate fresco',  price: 3000 },
     ],
-    allergens: ['Lácteos', 'Huevo'],
+    allergens: [],
+  },
+
+  // ── PARRILLA ──────────────────────────────────────────────────────────────
+  {
+    id: 'p1',
+    name: 'Chuleta de Cerdo a la Parrilla',
+    category: 'Parrilla',
+    price: 38000,
+    badges: ['Parrilla'],
+    desc: 'Chuleta de cerdo marinada en ajo y hierbas. Asada al carbón con papa criolla y ensalada.',
+    fullDesc:
+      'Chuleta de cerdo de 350g marinada en ajo, tomillo, romero y limón. Asada lentamente al carbón hasta lograr una costra dorada. Acompañada de papa criolla salteada y ensalada fresca.',
+    options: ['Poco cocida', 'Término medio', 'Bien cocida'],
+    image: 'https://images.unsplash.com/photo-1432139555190-58524dae6a55?w=600&q=80',
+    images: ['https://images.unsplash.com/photo-1432139555190-58524dae6a55?w=800&q=80'],
+    cookingOptions: terminosCarne,
+    extras: [
+      { id: 'papa',        label: 'Papa criolla extra', desc: 'Porción adicional de papa criolla', price: 4000 },
+      { id: 'chimichurri', label: 'Chimichurri casero', desc: 'Salsa chimichurri hecha en casa',    price: 2000 },
+    ],
+    allergens: ['Lácteos'],
   },
   {
-    id: '5',
-    name: 'Pulpo Braseado al Carbón',
-    category: 'Entrantes Exclusivos',
-    price: 31,
-    badges: ['Del Mar', 'Sin Gluten'],
-    desc: 'Pata de pulpo de roca asada al carbón de marabú, causa limeña ahumada, emulsión de...',
+    id: 'p2',
+    name: 'Pollo Asado al Carbón',
+    category: 'Parrilla',
+    price: 32000,
+    badges: ['Popular'],
+    desc: 'Medio pollo asado al carbón, dorado por fuera y jugoso por dentro. Con papas y ensalada.',
     fullDesc:
-      'Pata de pulpo de roca gallego, cocida a baja temperatura durante 3 horas y asada al carbón de marabú para lograr el exterior tostado y crujiente. Servido sobre causa limeña ahumada, emulsión de pimentón de la Vera y brotes de cilantro. Una fusión Atlántico-Pacífico inigualable.',
-    options: ['Suave Clásico', 'Toque Intenso'],
-    image: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&q=80',
-      'https://images.unsplash.com/photo-1615361200141-f45040f367be?w=800&q=80',
-    ],
+      'Medio pollo de 600g marinado en chimichurri y especias criollas, asado lentamente al carbón. Servido con papas fritas artesanales y ensalada mixta de la casa.',
+    options: [],
+    image: 'https://images.unsplash.com/photo-1598103442097-8b74394b95c8?w=600&q=80',
+    images: ['https://images.unsplash.com/photo-1598103442097-8b74394b95c8?w=800&q=80'],
     extras: [
-      { id: 'extra', label: 'Pata entera adicional', desc: 'Para los grandes amantes del pulpo', price: 14 },
+      { id: 'papas',  label: 'Papas fritas extra',  desc: 'Una porción adicional de papas', price: 4000 },
+      { id: 'salsas', label: 'Salsas adicionales',   desc: 'Ají, chimichurri o BBQ',         price: 1500 },
     ],
-    pairing: {
-      name: 'Albariño Rías Baixas 2022',
-      price: 10,
-      desc: 'Cítrico, atlántico y salino. Complemento natural para los sabores del mar.',
-    },
-    allergens: ['Moluscos'],
+    allergens: [],
   },
   {
-    id: '6',
-    name: 'Esfera de Cacao Dorado & Avellana',
-    category: 'Postres & Vinos',
-    price: 16,
-    badges: ['Gourmet', 'Postre Signature'],
-    desc: 'Cúpula de cacao Valrhona 72%, mousse de avellanas del Piamonte tostadas, corazón de...',
+    id: 'p3',
+    name: 'Costillas BBQ',
+    category: 'Parrilla',
+    price: 48000,
+    badges: ['Parrilla', 'Para compartir'],
+    desc: 'Costillas de cerdo bañadas en salsa BBQ casera a base de panela. Tiernas y caramelizadas.',
     fullDesc:
-      'Cúpula de cacao Valrhona 72% rellena de mousse de avellanas del Piamonte tostadas al momento, corazón de pralinée crujiente y ganache de café etíope. Servida con helado de vainilla Bourbon y salsa de caramelo con flor de sal. Una obra maestra del chocolate.',
-    options: ['Pedro Ximénez (+7€)', 'Sin Maridaje'],
-    image: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=600&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=800&q=80',
-      'https://images.unsplash.com/photo-1548365328-8c6db3220e4c?w=800&q=80',
+      'Medio rack de costillas marinadas 12 horas en salsa BBQ casera de panela, ají y especias. Asadas lentamente a la parrilla. Con papas fritas y coleslaw de la casa.',
+    options: ['Suaves', 'Con mordida'],
+    image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600&q=80',
+    images: ['https://images.unsplash.com/photo-1544025162-d76694265947?w=800&q=80'],
+    cookingOptions: [
+      { id: 'suave', label: 'Suaves',      sublabel: 'Se desprenden solas' },
+      { id: 'firme', label: 'Con mordida', sublabel: 'Más caramelizadas'   },
     ],
     extras: [
-      { id: 'px', label: 'Copa de Pedro Ximénez', desc: 'Maridaje dulce recomendado por el sommelier', price: 7 },
-      { id: 'helado', label: 'Bola extra de helado artesanal', desc: 'Vainilla Bourbon, Pistache o Frambuesa', price: 3 },
+      { id: 'salsa', label: 'Salsa BBQ extra',    desc: 'Porción extra de salsa BBQ casera', price: 2000 },
+      { id: 'papas', label: 'Papas fritas extra', desc: 'Una porción adicional de papas',     price: 4000 },
     ],
-    allergens: ['Gluten', 'Lácteos', 'Frutos Secos', 'Huevo'],
+    allergens: ['Gluten'],
+  },
+  {
+    id: 'p4',
+    name: 'Lomo de Res a la Plancha',
+    category: 'Parrilla',
+    price: 52000,
+    badges: ['Recomendado'],
+    desc: 'Lomo de res de 300g sellado en plancha con salsa criolla, papas al vapor y ensalada.',
+    fullDesc:
+      'Lomo de res de 300g sellado en plancha de hierro a alta temperatura. Bañado con salsa criolla de tomate chonto, cebolla larga y ají dulce. Con papas al vapor y ensalada fresca.',
+    options: ['Poco cocido', 'Término medio', 'Bien cocido'],
+    image: 'https://images.unsplash.com/photo-1558030006-450675393462?w=600&q=80',
+    images: ['https://images.unsplash.com/photo-1558030006-450675393462?w=800&q=80'],
+    cookingOptions: terminosCarne,
+    extras: [
+      { id: 'salsa',    label: 'Salsa criolla extra',  desc: 'Porción extra de salsa criolla', price: 2000 },
+      { id: 'aguacate', label: 'Aguacate',              desc: 'Media unidad de aguacate fresco', price: 3000 },
+    ],
+    allergens: [],
+  },
+
+  // ── PLATOS PRINCIPALES ────────────────────────────────────────────────────
+  {
+    id: 'm1',
+    name: 'Bandeja Paisa',
+    category: 'Platos Principales',
+    price: 42000,
+    badges: ['Típico', 'Recomendado'],
+    desc: 'El plato insignia: frijoles, arroz, chicharrón, carne molida, chorizo, huevo, aguacate y arepa.',
+    fullDesc:
+      'La auténtica Bandeja Paisa con frijoles cargamanto rojos cocinados al natural, arroz blanco, chicharrón crujiente, carne molida sazonada, chorizo antioqueño, huevo frito, aguacate fresco y arepa blanca.',
+    options: [],
+    image: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=600&q=80',
+    images: ['https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800&q=80'],
+    extras: [
+      { id: 'chicharron', label: 'Chicharrón extra',   desc: 'Porción adicional de chicharrón',  price: 5000 },
+      { id: 'aguacate',   label: 'Aguacate adicional', desc: 'Media unidad de aguacate fresco',  price: 3000 },
+      { id: 'arepa',      label: 'Arepa extra',         desc: 'Arepa blanca o de chócolo',        price: 2000 },
+    ],
+    allergens: ['Gluten', 'Huevo'],
+  },
+  {
+    id: 'm2',
+    name: 'Trucha al Horno',
+    category: 'Platos Principales',
+    price: 38000,
+    badges: ['Del Río'],
+    desc: 'Trucha arcoíris al horno con mantequilla de hierbas y ajo. Con arroz y patacones.',
+    fullDesc:
+      'Trucha arcoíris de 400g al horno en mantequilla de hierbas con ajo, perejil y limón. Servida con arroz blanco y patacones tostados bañados en hogao tradicional.',
+    options: [],
+    image: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=600&q=80',
+    images: ['https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=800&q=80'],
+    extras: [
+      { id: 'patacon',  label: 'Patacones extra', desc: 'Dos patacones con hogao',       price: 3500 },
+      { id: 'aguacate', label: 'Aguacate',          desc: 'Media unidad de aguacate fresco', price: 3000 },
+    ],
+    allergens: ['Pescado', 'Lácteos'],
+  },
+
+  // ── POSTRES ───────────────────────────────────────────────────────────────
+  {
+    id: 'd1',
+    name: 'Arroz con Leche',
+    category: 'Postres',
+    price: 9000,
+    badges: ['Casero'],
+    desc: 'Arroz con leche cremoso con canela en rama y panela. La receta de siempre.',
+    fullDesc:
+      'Preparado con leche entera, canela en rama, cáscara de limón y endulzado con panela. Cocinado a fuego lento hasta lograr una textura cremosa. Servido tibio o frío.',
+    options: ['Tibio', 'Frío'],
+    image: 'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?w=600&q=80',
+    images: ['https://images.unsplash.com/photo-1584132967334-10e028bd69f7?w=800&q=80'],
+    allergens: ['Lácteos'],
+  },
+  {
+    id: 'd2',
+    name: 'Torta de Tres Leches',
+    category: 'Postres',
+    price: 11000,
+    badges: ['Popular'],
+    desc: 'Bizcocho húmedo bañado en tres tipos de leche. Cubierto con crema chantillí.',
+    fullDesc:
+      'Bizcocho esponjoso bañado en leche entera, leche condensada y leche evaporada. Cubierto con crema chantillí y decorado con canela en polvo.',
+    options: [],
+    image: 'https://images.unsplash.com/photo-1464305795204-6f5bbfc7fb81?w=600&q=80',
+    images: ['https://images.unsplash.com/photo-1464305795204-6f5bbfc7fb81?w=800&q=80'],
+    allergens: ['Lácteos', 'Gluten', 'Huevo'],
+  },
+
+  // ── BEBIDAS ───────────────────────────────────────────────────────────────
+  {
+    id: 'b1',
+    name: 'Limonada de Coco',
+    category: 'Bebidas',
+    price: 9000,
+    badges: ['Refrescante'],
+    desc: 'Limonada de coco cremosa preparada al momento con limón Tahití y hielo.',
+    fullDesc:
+      'Preparada al momento con limón Tahití, leche de coco y hielo. Cremosa y refrescante, perfecta para acompañar cualquier plato.',
+    options: ['Con azúcar', 'Sin azúcar'],
+    image: 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=600&q=80',
+    images: ['https://images.unsplash.com/photo-1544145945-f90425340c7e?w=800&q=80'],
+    allergens: ['Lácteos'],
+  },
+  {
+    id: 'b2',
+    name: 'Jugo Natural',
+    category: 'Bebidas',
+    price: 7000,
+    badges: ['Natural'],
+    desc: 'Jugo de fruta de temporada preparado al momento. En agua o en leche.',
+    fullDesc:
+      'Frutas de temporada: maracuyá, mango, guanábana, lulo, mora, fresa o naranja. En agua fría o en leche entera.',
+    options: ['Maracuyá', 'Mango', 'Lulo', 'Mora', 'Fresa', 'Naranja'],
+    image: 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=600&q=80',
+    images: ['https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=800&q=80'],
+    allergens: [],
   },
 ]

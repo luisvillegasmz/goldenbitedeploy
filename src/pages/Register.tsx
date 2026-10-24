@@ -3,85 +3,103 @@ import { Link, useNavigate } from 'react-router-dom'
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
 import { auth, db } from '../firebase'
+import { useAuth } from '../context/AuthContext'
 import './Login.css'
 import './Register.css'
 
 interface FormData {
-  name: string
-  email: string
-  phone: string
-  password: string
-  confirm: string
+  name:       string
+  email:      string
+  phone:      string
+  password:   string
+  confirm:    string
   newsletter: boolean
-  terms: boolean
+  terms:      boolean
 }
 
 function getPasswordStrength(password: string): number {
   let score = 0
-  if (password.length >= 8) score++
+  if (password.length >= 8)           score++
   if (/[0-9!@#$%^&*]/.test(password)) score++
-  if (password.length >= 12) score++
+  if (password.length >= 12)          score++
   return score
 }
 
 export default function Register() {
-  const navigate = useNavigate()
+  const navigate          = useNavigate()
+  const { signInWithGoogle } = useAuth()
+
   const [form, setForm] = useState<FormData>({
     name: '', email: '', phone: '', password: '', confirm: '',
-    newsletter: true, terms: false,
+    newsletter: false, terms: false,
   })
-  const [showPass, setShowPass]     = useState(false)
+  const [showPass,    setShowPass]    = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
-  const [loading, setLoading]       = useState(false)
-  const [error, setError]           = useState('')
+  const [loading,     setLoading]     = useState(false)
+  const [error,       setError]       = useState('')
 
   const strength = getPasswordStrength(form.password)
 
   const set = (field: keyof FormData) =>
     (e: React.ChangeEvent<HTMLInputElement>) =>
-      setForm(prev => ({ ...prev, [field]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
+      setForm(prev => ({
+        ...prev,
+        [field]: e.target.type === 'checkbox' ? e.target.checked : e.target.value,
+      }))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
     if (form.password !== form.confirm) { setError('Las contraseñas no coinciden.'); return }
-    if (!form.terms) { setError('Debes aceptar los Términos de Servicio.'); return }
-    if (form.password.length < 8) { setError('La contraseña debe tener al menos 8 caracteres.'); return }
+    if (!form.terms)                    { setError('Debes aceptar los Términos de Servicio.'); return }
+    if (form.password.length < 8)       { setError('La contraseña debe tener al menos 8 caracteres.'); return }
 
     setLoading(true)
     try {
       // 1. Crear usuario en Firebase Auth
       const cred = await createUserWithEmailAndPassword(auth, form.email, form.password)
 
-      // 2. Guardar nombre en el perfil de Auth
+      // 2. Actualizar el displayName en Auth
       await updateProfile(cred.user, { displayName: form.name })
 
-      // 3. Guardar datos extra en Firestore
-      await setDoc(doc(db, 'users', cred.user.uid), {
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
-        newsletter: form.newsletter,
-        membership: 'standard',
-        points: 0,
-        createdAt: new Date(),
+      // 3. Crear documento en Firestore (colección 'usuarios')
+      await setDoc(doc(db, 'usuarios', cred.user.uid), {
+        displayName: form.name,
+        email:       form.email,
+        phone:       form.phone,
+        role:        'cliente',
+        points:      0,
+        createdAt:   new Date().toLocaleDateString('es-CO', {
+          day: 'numeric', month: 'long', year: 'numeric',
+        }),
       })
 
       navigate('/')
     } catch (err: any) {
-      if (err.code === 'auth/email-already-in-use') {
-        setError('Ya existe una cuenta con ese correo.')
-      } else if (err.code === 'auth/weak-password') {
-        setError('La contraseña es demasiado débil.')
-      } else {
-        setError('Error al crear la cuenta. Intenta de nuevo.')
+      if      (err.code === 'auth/email-already-in-use') setError('Ya existe una cuenta con ese correo.')
+      else if (err.code === 'auth/weak-password')         setError('La contraseña es demasiado débil.')
+      else if (err.code === 'auth/operation-not-allowed') setError('El registro por correo no está habilitado. Actívalo en Firebase Console → Authentication.')
+      else {
+        console.error(err)
+        setError(`Error: ${err.message}`)
       }
     } finally {
       setLoading(false)
     }
   }
 
-  const strengthLabels = ['', 'Débil', 'Media', 'Alta (Recomendada)']
+  const handleGoogle = async () => {
+    setError('')
+    try {
+      await signInWithGoogle()
+      navigate('/')
+    } catch (err: any) {
+      setError('Error al iniciar sesión con Google.')
+    }
+  }
+
+  const strengthLabels = ['', 'Débil', 'Media', 'Alta']
   const strengthColors = ['', 'active-weak', 'active-medium', 'active-strong']
 
   return (
@@ -91,110 +109,115 @@ export default function Register() {
         <div className="auth-left__bg register-left__bg" />
         <div className="auth-left__overlay" />
         <div className="auth-left__content">
-          <span className="badge">★ Privilegios Exclusivos</span>
+          <span className="badge">
+            <i className="bi bi-star" /> Golden Bite
+          </span>
           <h1 className="auth-left__title">
-            Una mesa reservada para los sentidos más audaces.
+            Crea tu cuenta y empieza a pedir.
           </h1>
           <p className="register-left__desc">
-            Forme parte de nuestra cofradía gastronómica. Los miembros de Golden Bite disfrutan
-            de acceso preferente a temporadas de trufa blanca, maridajes de añadas irrepetibles
-            y mesas secretas.
+            Regístrate para hacer tus pedidos, ver tu historial
+            y acumular puntos con cada compra.
           </p>
-          <div className="register-feature-card">
-            <img
-              src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&q=80"
-              alt="Cava Privada"
-              className="register-feature-card__img"
-            />
-            <div className="register-feature-card__body">
-              <h3>Cava Privada</h3>
-              <span className="badge">Nivel Noir</span>
-              <p>Degustaciones bimestrales con sumiller</p>
-            </div>
-          </div>
         </div>
       </div>
 
       {/* ── LADO DERECHO ── */}
       <div className="auth-right">
         <div className="auth-form-wrap">
-          <p className="section-label" style={{ marginBottom: '8px' }}>Membresía Culinaria</p>
-          <h2 className="auth-title">Únete a Golden Bite Club</h2>
+          <h2 className="auth-title">Crear cuenta</h2>
           <p className="auth-subtitle">
-            Acceso a mesas prioritarias, eventos de cata privada y maridajes exclusivos.
+            Completa el formulario para registrarte.
           </p>
 
+          {/* Google */}
           <div className="auth-social">
-            <button className="auth-social__btn"><span>🍎</span> Continuar con Apple</button>
-            <button className="auth-social__btn"><span>G</span> Continuar con Google</button>
+            <button className="auth-social__btn" onClick={handleGoogle} type="button">
+              <i className="bi bi-google" /> Continuar con Google
+            </button>
           </div>
 
-          <div className="auth-divider"><span>O con tu correo electrónico</span></div>
+          <div className="auth-divider"><span>O con tu correo</span></div>
 
           {error && <div className="auth-error">{error}</div>}
 
           <form onSubmit={handleSubmit} className="auth-form">
+
             {/* Nombre */}
             <div className="auth-field">
-              <label>Nombre Completo</label>
+              <label>Nombre completo</label>
               <div className="auth-field__input-wrap">
-                <span className="auth-field__icon">👤</span>
-                <input type="text" placeholder="Ej. Alejandro Valdés" value={form.name} onChange={set('name')} required />
+                <i className="bi bi-person auth-field__icon" />
+                <input
+                  type="text"
+                  placeholder="Tu nombre"
+                  value={form.name}
+                  onChange={set('name')}
+                  required
+                />
               </div>
             </div>
 
             {/* Email */}
             <div className="auth-field">
-              <label>Correo Electrónico Institucional o Personal</label>
+              <label>Correo electrónico</label>
               <div className="auth-field__input-wrap">
-                <span className="auth-field__icon">✉</span>
-                <input type="email" placeholder="valdes@gourmet.com" value={form.email} onChange={set('email')} required />
+                <i className="bi bi-envelope auth-field__icon" />
+                <input
+                  type="email"
+                  placeholder="correo@ejemplo.com"
+                  value={form.email}
+                  onChange={set('email')}
+                  required
+                />
               </div>
             </div>
 
             {/* Teléfono */}
             <div className="auth-field">
-              <label>Número de Teléfono</label>
+              <label>Número de teléfono <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>(opcional)</span></label>
               <div className="auth-field__input-wrap">
-                <span className="auth-field__icon">📱</span>
-                <input type="tel" placeholder="612 345 678" value={form.phone} onChange={set('phone')} />
+                <i className="bi bi-phone auth-field__icon" />
+                <input
+                  type="tel"
+                  placeholder="300 123 4567"
+                  value={form.phone}
+                  onChange={set('phone')}
+                />
               </div>
-              <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
-                Utilizado exclusivamente para confirmación de reservas de mesa.
-              </span>
             </div>
 
             {/* Contraseñas */}
             <div className="auth-row">
               <div className="auth-field">
-                <label>Contraseña Segura</label>
+                <label>Contraseña</label>
                 <div className="auth-field__input-wrap">
-                  <span className="auth-field__icon">🔒</span>
+                  <i className="bi bi-lock auth-field__icon" />
                   <input
                     type={showPass ? 'text' : 'password'}
-                    placeholder="••••••••••"
+                    placeholder="Mínimo 8 caracteres"
                     value={form.password}
                     onChange={set('password')}
                     required
                   />
                   <button type="button" className="auth-field__toggle" onClick={() => setShowPass(!showPass)}>
-                    {showPass ? '🙈' : '👁'}
+                    <i className={`bi bi-${showPass ? 'eye-slash' : 'eye'}`} />
                   </button>
                 </div>
               </div>
               <div className="auth-field">
-                <label>Confirmar Contraseña</label>
+                <label>Confirmar contraseña</label>
                 <div className="auth-field__input-wrap">
-                  <span className="auth-field__icon">🔒</span>
+                  <i className="bi bi-lock auth-field__icon" />
                   <input
                     type={showConfirm ? 'text' : 'password'}
-                    placeholder="••••••••••"
+                    placeholder="Repite la contraseña"
                     value={form.confirm}
                     onChange={set('confirm')}
                     required
                   />
                   <button type="button" className="auth-field__toggle" onClick={() => setShowConfirm(!showConfirm)}>
-                    {showConfirm ? '🙈' : '👁'}
+                    <i className={`bi bi-${showConfirm ? 'eye-slash' : 'eye'}`} />
                   </button>
                 </div>
               </div>
@@ -205,9 +228,11 @@ export default function Register() {
               <div className="auth-strength">
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                   <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>
-                    Fortaleza de Contraseña
+                    Fortaleza
                   </span>
-                  <span style={{ fontSize: '10px', color: 'var(--gold)' }}>{strengthLabels[strength]}</span>
+                  <span style={{ fontSize: '10px', color: 'var(--gold)' }}>
+                    {strengthLabels[strength]}
+                  </span>
                 </div>
                 <div className="auth-strength__bar">
                   {[1, 2, 3].map(i => (
@@ -219,10 +244,14 @@ export default function Register() {
                 </div>
                 <div className="auth-strength__hints">
                   <span className={`auth-strength__hint ${form.password.length >= 8 ? 'ok' : ''}`}>
-                    {form.password.length >= 8 ? '✓' : '○'} Mínimo 8 caracteres
+                    {form.password.length >= 8
+                      ? <><i className="bi bi-check" /> Mínimo 8 caracteres</>
+                      : <><i className="bi bi-circle" /> Mínimo 8 caracteres</>}
                   </span>
                   <span className={`auth-strength__hint ${/[0-9!@#$%^&*]/.test(form.password) ? 'ok' : ''}`}>
-                    {/[0-9!@#$%^&*]/.test(form.password) ? '✓' : '○'} Un número o símbolo
+                    {/[0-9!@#$%^&*]/.test(form.password)
+                      ? <><i className="bi bi-check" /> Un número o símbolo</>
+                      : <><i className="bi bi-circle" /> Un número o símbolo</>}
                   </span>
                 </div>
               </div>
@@ -232,24 +261,24 @@ export default function Register() {
             <div className="auth-terms">
               <label className="auth-term-label">
                 <input type="checkbox" checked={form.newsletter} onChange={set('newsletter')} />
-                <span>Deseo recibir invitaciones a catas privadas y novedades culinarias de la temporada.</span>
+                <span>Quiero recibir novedades y promociones de Golden Bite.</span>
               </label>
               <label className="auth-term-label">
                 <input type="checkbox" checked={form.terms} onChange={set('terms')} required />
                 <span>
                   He leído y acepto los <a href="#">Términos de Servicio</a> y la{' '}
-                  <a href="#">Política de Privacidad</a> de Golden Bite Bistro.
+                  <a href="#">Política de Privacidad</a> de Golden Bite.
                 </span>
               </label>
             </div>
 
             <button type="submit" className="btn-gold auth-submit" disabled={loading}>
-              {loading ? 'Creando membresía...' : 'Crear Mi Membresía →'}
+              {loading ? 'Creando cuenta...' : 'Crear cuenta →'}
             </button>
           </form>
 
           <p className="auth-switch">
-            ¿Ya tienes una cuenta? <Link to="/login">Iniciar sesión</Link>
+            ¿Ya tienes cuenta? <Link to="/login">Iniciar sesión</Link>
           </p>
         </div>
       </div>

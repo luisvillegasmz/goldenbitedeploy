@@ -1,51 +1,51 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { formatCOP } from '../utils/format'
 import { useCart } from '../context/CartContext'
 import './Cart.css'
 
 const suggestions = [
   {
-    id: 's1',
-    name: 'Coulant de Cacao 80%',
-    price: 16,
-    desc: 'Caramelo de mantequilla salada & oro',
-    image: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=200&q=80',
+    id: 'b1',
+    name: 'Jugo Natural',
+    price: 7000,
+    desc: 'Maracuyá, lulo, mora o naranja',
+    image: 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=200&q=80',
   },
   {
-    id: 's2',
-    name: 'Champagne Brut Grand Cru',
-    price: 95,
-    desc: 'Maridaje celestial para el Caviar',
-    image: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=200&q=80',
+    id: 'd1',
+    name: 'Arroz con Leche',
+    price: 9000,
+    desc: 'Con canela y panela, postre casero',
+    image: 'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?w=200&q=80',
   },
 ]
 
-const SHIPPING = 6.5
-const TAX_RATE = 0.1
-const TIP_OPTIONS = [10, 15, 20, 0] // 0 = libre
+const SHIPPING    = 8000
+const TIP_OPTIONS = [0, 5, 10, 15] as const
+type TipOption    = typeof TIP_OPTIONS[number]
 
 export default function Cart() {
   const navigate = useNavigate()
-  const { items, updateQuantity, removeItem, total } = useCart()
-  const [delivery, setDelivery]   = useState<'envio' | 'recogida'>('envio')
-  const [tip, setTip]             = useState(15)
-  const [notes, setNotes]         = useState('')
-  const [promoCode, setPromoCode] = useState('')
+  const { items, updateQuantity, removeItem, total, addItem } = useCart()
 
-  const shipping  = delivery === 'envio' ? SHIPPING : 0
-  const subtotal  = total
-  const taxes     = subtotal * TAX_RATE
-  const tipAmount = subtotal * (tip / 100)
-  const grandTotal = subtotal + shipping + taxes + tipAmount
+  const [delivery,   setDelivery]   = useState<'envio' | 'recogida'>('envio')
+  const [tip,        setTip]        = useState<TipOption>(0)
+  const [notes,      setNotes]      = useState('')
+  const [promoCode,  setPromoCode]  = useState('')
+
+  const shipping   = delivery === 'envio' ? SHIPPING : 0
+  const tipAmount  = total * (tip / 100)
+  const grandTotal = total + shipping + tipAmount
 
   if (items.length === 0) {
     return (
       <main className="cart-empty">
         <div className="cart-empty__content">
-          <span className="cart-empty__icon">🛒</span>
+          <i className="bi bi-bag" style={{ fontSize: '48px', color: 'var(--gold)' }} />
           <h2>Tu carrito está vacío</h2>
-          <p>Explora nuestra carta y añade tus platos favoritos.</p>
-          <Link to="/menu" className="btn-gold">Ver la Carta</Link>
+          <p>Explora nuestro menú y agrega lo que quieras.</p>
+          <Link to="/menu" className="btn-gold">Ver el Menú</Link>
         </div>
       </main>
     )
@@ -54,24 +54,23 @@ export default function Cart() {
   return (
     <main className="cart-page">
       <div className="container">
+
         {/* Breadcrumb */}
         <nav className="cart-breadcrumb">
-          <Link to="/menu">Menú Gourmet</Link>
+          <Link to="/menu">Menú</Link>
           <span>/</span>
-          <span>Tu Selección</span>
+          <span>Tu Carrito</span>
         </nav>
 
         <div className="cart-header">
           <h1 className="cart-title">
-            Carrito de Compras
-            <span className="cart-count">{items.length} Artículos</span>
+            Carrito
+            <span className="cart-count">{items.length} {items.length === 1 ? 'producto' : 'productos'}</span>
           </h1>
-          <div className="cart-guarantee">
-            🛡 Servicio White-Glove Garantizado
-          </div>
         </div>
 
         <div className="cart-layout">
+
           {/* ── COLUMNA IZQUIERDA: Items ── */}
           <div className="cart-items">
             {items.map(item => (
@@ -83,12 +82,16 @@ export default function Cart() {
                 <div className="cart-item__info">
                   <div className="cart-item__top">
                     <h3 className="cart-item__name">{item.name}</h3>
-                    <button className="cart-item__remove" onClick={() => removeItem(item.id)}>🗑</button>
+                    <button className="cart-item__remove" onClick={() => removeItem(item.id)}>
+                      <i className="bi bi-trash" />
+                    </button>
                   </div>
 
                   {item.cooking && (
                     <div className="cart-item__tags">
-                      <span className="cart-item__tag">✓ {item.cooking}</span>
+                      <span className="cart-item__tag">
+                        <i className="bi bi-check" /> {item.cooking}
+                      </span>
                     </div>
                   )}
 
@@ -99,39 +102,38 @@ export default function Cart() {
                       <button onClick={() => updateQuantity(item.id, item.quantity + 1)}>+</button>
                     </div>
                     <div>
-                      <p className="cart-item__unit">PRECIO UNITARIO: {item.price.toFixed(2)} €</p>
-                      <p className="cart-item__total">{(item.price * item.quantity).toFixed(2)} €</p>
+                      <p className="cart-item__unit">
+                        Precio unitario: {formatCOP(item.price)}
+                      </p>
+                      <p className="cart-item__total">
+                        {formatCOP(item.price * item.quantity)}
+                      </p>
                     </div>
                   </div>
-
-                  <button className="cart-item__notes-btn">✏ Modificar notas culinarias para cocina</button>
                 </div>
               </div>
             ))}
 
-            {/* Notas para la cocina */}
+            {/* Notas para cocina */}
             <div className="cart-kitchen-notes">
-              <p className="cart-kitchen-notes__label">Indicaciones para la Cocina y Alérgenos</p>
+              <p className="cart-kitchen-notes__label">
+                <i className="bi bi-pencil" /> Instrucciones para cocina
+              </p>
               <textarea
                 className="cart-kitchen-notes__input"
-                placeholder="Indica requisitos dietéticos específicos, alergias o preferencias sobre el empaquetado térmico..."
+                placeholder="Alergias, restricciones alimentarias o preferencias de preparación..."
                 rows={3}
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
               />
             </div>
 
-            {/* Maridajes sugeridos */}
+            {/* Sugerencias */}
             <div className="cart-suggestions">
               <div className="cart-suggestions__header">
-                <div>
-                  <p className="section-label" style={{ marginBottom: '2px' }}>Armonía Gastronómica</p>
-                  <h3 className="cart-suggestions__title">Maridajes recomendados para tu pedido</h3>
-                </div>
-                <div className="cart-suggestions__nav">
-                  <button>←</button>
-                  <button>→</button>
-                </div>
+                <h3 className="cart-suggestions__title">
+                  <i className="bi bi-stars" /> También te puede gustar
+                </h3>
               </div>
               <div className="cart-suggestions__grid">
                 {suggestions.map(s => (
@@ -139,10 +141,18 @@ export default function Cart() {
                     <img src={s.image} alt={s.name} className="suggestion-card__img" />
                     <div className="suggestion-card__info">
                       <p className="suggestion-card__name">
-                        {s.name} <span className="suggestion-card__price">{s.price},00 €</span>
+                        {s.name}
+                        <span className="suggestion-card__price"> · {formatCOP(s.price)}</span>
                       </p>
                       <p className="suggestion-card__desc">{s.desc}</p>
-                      <button className="suggestion-card__btn">+ Añadir al Pedido</button>
+                      <button
+                        className="suggestion-card__btn"
+                        onClick={() =>
+                          addItem({ id: s.id, name: s.name, price: s.price, quantity: 1, image: s.image })
+                        }
+                      >
+                        + Agregar
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -153,8 +163,7 @@ export default function Cart() {
           {/* ── COLUMNA DERECHA: Resumen ── */}
           <div className="cart-summary">
             <div className="cart-summary__header">
-              <h2 className="cart-summary__title">Resumen de Cuenta</h2>
-              <span className="badge">Mesa &amp; Domicilio</span>
+              <h2 className="cart-summary__title">Resumen</h2>
             </div>
 
             {/* Tipo de entrega */}
@@ -163,47 +172,42 @@ export default function Cart() {
                 className={`cart-delivery__btn ${delivery === 'envio' ? 'active' : ''}`}
                 onClick={() => setDelivery('envio')}
               >
-                🚗 Envío Gourmet
+                <i className="bi bi-scooter" /> Domicilio
               </button>
               <button
                 className={`cart-delivery__btn ${delivery === 'recogida' ? 'active' : ''}`}
                 onClick={() => setDelivery('recogida')}
               >
-                🏪 Recogida Bistro
+                <i className="bi bi-shop" /> Recoger
               </button>
             </div>
 
             {delivery === 'envio' && (
               <div className="cart-delivery-time">
-                <span>⏱ Tiempo estimado de llegada</span>
-                <span className="cart-delivery-time__value">30 – 40 min</span>
-                <p>Transporte climatizado de alta cocina</p>
+                <span><i className="bi bi-clock" /> Tiempo estimado</span>
+                <span className="cart-delivery-time__value">40 – 60 min</span>
               </div>
             )}
 
             {/* Desglose */}
             <div className="cart-breakdown">
               <div className="cart-breakdown__row">
-                <span>Subtotal artículos ({items.length})</span>
-                <span>{subtotal.toFixed(2)} €</span>
+                <span>Subtotal ({items.length} productos)</span>
+                <span>{formatCOP(total)}</span>
               </div>
               {delivery === 'envio' && (
                 <div className="cart-breakdown__row">
-                  <span>Gastos de Envío Exclusivo ⓘ</span>
-                  <span>{SHIPPING.toFixed(2)} €</span>
+                  <span>Domicilio</span>
+                  <span>{formatCOP(SHIPPING)}</span>
                 </div>
               )}
-              <div className="cart-breakdown__row">
-                <span>Impuestos (IVA 10% y 21% bodega)</span>
-                <span>{taxes.toFixed(2)} €</span>
-              </div>
             </div>
 
-            {/* Propina */}
+            {/* Propina opcional */}
             <div className="cart-tip">
               <div className="cart-tip__header">
-                <span>🙏 Gratificación al Equipo</span>
-                <span className="cart-tip__optional">Opcional</span>
+                <span>Propina</span>
+                <span className="cart-tip__optional">opcional</span>
               </div>
               <div className="cart-tip__options">
                 {TIP_OPTIONS.map(t => (
@@ -212,22 +216,26 @@ export default function Cart() {
                     className={`cart-tip__btn ${tip === t ? 'active' : ''}`}
                     onClick={() => setTip(t)}
                   >
-                    {t === 0 ? 'Libre' : `${t}%`}
+                    {t === 0 ? 'Sin propina' : `${t}%`}
                   </button>
                 ))}
               </div>
               {tip > 0 && (
-                <p className="cart-tip__amount">Propina seleccionada: +{tipAmount.toFixed(2)} €</p>
+                <p className="cart-tip__amount">
+                  Propina: +{formatCOP(tipAmount)}
+                </p>
               )}
             </div>
 
-            {/* Código promo */}
+            {/* Código de descuento */}
             <div className="cart-promo">
-              <p className="cart-promo__label">Código de Invitación / Membresía</p>
+              <p className="cart-promo__label">
+                <i className="bi bi-tag" /> Código de descuento
+              </p>
               <div className="cart-promo__row">
                 <input
                   type="text"
-                  placeholder="Ej. GOLDENCLUB"
+                  placeholder="Ingresa tu código"
                   value={promoCode}
                   onChange={e => setPromoCode(e.target.value.toUpperCase())}
                 />
@@ -238,27 +246,27 @@ export default function Cart() {
             {/* Total */}
             <div className="cart-total">
               <div>
-                <p className="cart-total__label">Total Liquidación</p>
-                <p className="cart-total__sub">IVA & Servicio Incluidos</p>
+                <p className="cart-total__label">Total</p>
+                <p className="cart-total__sub">Precios incluyen IVA</p>
               </div>
-              <span className="cart-total__amount">{grandTotal.toFixed(2)} €</span>
+              <span className="cart-total__amount">{formatCOP(grandTotal)}</span>
             </div>
 
-            <button className="btn-gold cart-checkout-btn" onClick={() => navigate('/checkout')}>
-              🔒 Proceder al Pago Seguro
+            <button
+              className="btn-gold cart-checkout-btn"
+              onClick={() => navigate('/checkout')}
+            >
+              <i className="bi bi-lock-fill" /> Ir a pagar
             </button>
 
             {/* Métodos de pago */}
             <div className="cart-payments">
-              <p className="cart-payments__label">Métodos de Pago Encriptados</p>
+              <p className="cart-payments__label">Métodos de pago aceptados</p>
               <div className="cart-payments__icons">
-                {['Apple Pay', 'VISA', 'MC SECURE', 'AMEX'].map(m => (
+                {['VISA', 'MASTERCARD', 'NEQUI', 'DAVIPLATA', 'EFECTIVO'].map(m => (
                   <span key={m} className="cart-payment-badge">{m}</span>
                 ))}
               </div>
-              <p className="cart-payments__note">
-                🔒 Cumplimiento estricto PSD2 y certificación bancaria SSL 256-bit
-              </p>
             </div>
           </div>
         </div>

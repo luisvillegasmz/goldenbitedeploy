@@ -1,6 +1,3 @@
-// REEMPLAZA el contenido de: src/pages/Checkout.tsx
-// Este archivo agrega la integración real con Firebase Firestore
-
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { collection, addDoc, doc, updateDoc, increment, serverTimestamp } from 'firebase/firestore'
@@ -10,44 +7,64 @@ import { db } from '../firebase'
 import './Checkout.css'
 
 type DeliveryMode = 'envio' | 'recogida'
-type PaymentTab   = 'tarjeta' | 'digital' | 'club'
-type TipOption    = 0 | 10 | 15 | 20
+type PaymentTab   = 'tarjeta' | 'digital' | 'efectivo'
+type TipOption    = 0 | 5 | 10 | 15
+
+const formatCOP = (n: number) =>
+  new Intl.NumberFormat('es-CO', {
+    style:                 'currency',
+    currency:              'COP',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(n)
 
 export default function Checkout() {
   const navigate = useNavigate()
   const { items, total, clearCart } = useCart()
   const { user, profile } = useAuth()
 
-  const [delivery, setDelivery]   = useState<DeliveryMode>('envio')
-  const [payTab,   setPayTab]     = useState<PaymentTab>('tarjeta')
-  const [tip,      setTip]        = useState<TipOption>(15)
-  const [invoice,  setInvoice]    = useState(false)
-  const [loading,  setLoading]    = useState(false)
-  const [error,    setError]      = useState('')
+  const [delivery,     setDelivery]     = useState<DeliveryMode>('envio')
+  const [payTab,       setPayTab]       = useState<PaymentTab>('tarjeta')
+  const [tip,          setTip]          = useState<TipOption>(0)
+  const [invoice,      setInvoice]      = useState(false)
+  const [loading,      setLoading]      = useState(false)
+  const [error,        setError]        = useState('')
+  const [discountCode, setDiscountCode] = useState('')
+  const [discount,     setDiscount]     = useState(0)
+  const [discountMsg,  setDiscountMsg]  = useState('')
 
   const [card, setCard] = useState({ holder: '', number: '', expiry: '', cvc: '' })
-  const [addr, setAddr] = useState({ street: '', postal: '', notes: '' })
+  const [addr, setAddr] = useState({ street: '', city: 'Medellín', notes: '' })
 
-  const SHIPPING  = delivery === 'envio' ? 12.5 : 0
-  const TAX       = total * 0.1
-  const TIP_AMT   = total * (tip / 100)
-  const GRAND     = total + SHIPPING + TAX + TIP_AMT
+  const SHIPPING = delivery === 'envio' ? 8000 : 0
+  const TIP_AMT  = total * (tip / 100)
+  const GRAND    = total + SHIPPING + TIP_AMT - discount
 
   const generateOrderCode = () => 'GB-' + Math.floor(Math.random() * 90000 + 10000)
+
+  const applyDiscount = () => {
+    // Lógica básica — se conectará a Firestore en el paso del flujo de pedidos
+    if (discountCode.trim().toUpperCase() === 'GOLDEN10') {
+      const amount = total * 0.1
+      setDiscount(amount)
+      setDiscountMsg(`Descuento del 10% aplicado: -${formatCOP(amount)}`)
+      setError('')
+    } else {
+      setDiscount(0)
+      setDiscountMsg('')
+      setError('Código de descuento inválido.')
+    }
+  }
 
   const handlePay = async () => {
     if (!user) {
       navigate('/login', { state: { from: '/checkout' } })
       return
     }
-
     setError('')
     setLoading(true)
-
     try {
       const orderCode = generateOrderCode()
-
-      // Guardar pedido en Firestore
       const orderData = {
         userId:    user.uid,
         userEmail: user.email,
@@ -60,28 +77,26 @@ export default function Checkout() {
           image:    i.image,
           cooking:  i.cooking || null,
         })),
-        subtotal:   total,
-        shipping:   SHIPPING,
-        tax:        TAX,
-        tip:        TIP_AMT,
-        total:      GRAND,
+        subtotal:         total,
+        shipping:         SHIPPING,
+        tip:              TIP_AMT,
+        discount:         discount,
+        total:            GRAND,
         delivery,
-        paymentMethod: payTab,
-        address: delivery === 'envio' ? {
-          street: addr.street,
-          postal: addr.postal,
-          notes:  addr.notes,
-        } : null,
+        paymentMethod:    payTab,
+        address: delivery === 'envio'
+          ? { street: addr.street, city: addr.city, notes: addr.notes }
+          : null,
         invoiceRequested: invoice,
-        status:    'processing',
-        createdAt: serverTimestamp(),
+        status:           'pendiente',
+        createdAt:        serverTimestamp(),
       }
 
-      await addDoc(collection(db, 'orders'), orderData)
+      await addDoc(collection(db, 'pedidos'), orderData)
 
-      // Sumar puntos al usuario (1 punto por euro)
-      const pointsEarned = Math.floor(GRAND)
-      await updateDoc(doc(db, 'users', user.uid), {
+      // 1 punto por cada $1.000 COP
+      const pointsEarned = Math.floor(GRAND / 1000)
+      await updateDoc(doc(db, 'usuarios', user.uid), {
         points: increment(pointsEarned),
       })
 
@@ -90,7 +105,7 @@ export default function Checkout() {
         state: { total: GRAND, code: orderCode, points: pointsEarned }
       })
     } catch (e) {
-      console.error('Error saving order:', e)
+      console.error('Error al guardar pedido:', e)
       setError('Hubo un problema al procesar tu pedido. Intenta de nuevo.')
       setLoading(false)
     }
@@ -100,70 +115,84 @@ export default function Checkout() {
     (e: React.ChangeEvent<HTMLInputElement>) => setCard(p => ({ ...p, [f]: e.target.value }))
 
   const setAddrField = (f: keyof typeof addr) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setAddr(p => ({ ...p, [f]: e.target.value }))
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setAddr(p => ({ ...p, [f]: e.target.value }))
 
   return (
     <main className="checkout-page">
       <div className="container">
+
         {/* Stepper */}
         <nav className="checkout-stepper">
           <span className="checkout-stepper__step done">① Carrito</span>
           <span className="checkout-stepper__line" />
-          <span className="checkout-stepper__step done">② Datos &amp; Envío</span>
+          <span className="checkout-stepper__step done">② Datos & Envío</span>
           <span className="checkout-stepper__line" />
-          <span className="checkout-stepper__step active">③ Pago Seguro</span>
-          <span className="checkout-stepper__lock">🔒 SSL-256-BIT PSD2</span>
+          <span className="checkout-stepper__step active">③ Pago</span>
+          <span className="checkout-stepper__lock">
+            <i className="bi bi-lock-fill" /> Pago seguro
+          </span>
         </nav>
 
-        <p className="section-label">Haute Cuisine À Domicile</p>
-        <h1 className="checkout-title">Finalización de Experiencia Privada</h1>
+        <h1 className="checkout-title">Finalizar pedido</h1>
         <p className="checkout-subtitle">
-          Confirmación de comandas exclusivas preparadas por nuestro equipo culinario
-          bajo demanda y entregadas con protocolo White-Glove climatizado.
+          Revisa tu pedido y elige cómo quieres recibirlo.
         </p>
 
-        {/* Aviso sesión */}
         {!user && (
           <div className="auth-error" style={{ marginBottom: '24px' }}>
-            ⚠ Debes iniciar sesión para finalizar tu compra.{' '}
-            <a href="/login" style={{ color: 'var(--gold)', textDecoration: 'underline' }}>Iniciar sesión</a>
+            <i className="bi bi-exclamation-triangle" /> Debes iniciar sesión para finalizar tu pedido.{' '}
+            <a href="/login" style={{ color: 'var(--gold)', textDecoration: 'underline' }}>
+              Iniciar sesión
+            </a>
           </div>
         )}
-
-        {/* Error de pago */}
         {error && <div className="auth-error" style={{ marginBottom: '24px' }}>{error}</div>}
 
         <div className="checkout-layout">
+
           {/* ── COLUMNA IZQUIERDA ── */}
           <div className="checkout-left">
 
-            {/* A. Modalidad de Recepción */}
+            {/* A. Entrega */}
             <div className="checkout-section">
               <div className="checkout-section__header">
                 <span className="checkout-section__letter">A</span>
-                <h2 className="checkout-section__title">Modalidad de Recepción</h2>
-                <span className="badge">Servicio Exclusivo</span>
+                <h2 className="checkout-section__title">¿Cómo quieres recibir tu pedido?</h2>
               </div>
 
               <div className="checkout-delivery-opts">
                 <label className={`checkout-delivery-opt ${delivery === 'envio' ? 'active' : ''}`}>
-                  <input type="radio" name="delivery" checked={delivery === 'envio'} onChange={() => setDelivery('envio')} />
-                  <div className="checkout-delivery-opt__icon">🚗</div>
+                  <input type="radio" name="delivery" checked={delivery === 'envio'}
+                    onChange={() => setDelivery('envio')} />
+                  <div className="checkout-delivery-opt__icon">
+                    <i className="bi bi-scooter" />
+                  </div>
                   <div className="checkout-delivery-opt__content">
-                    <p className="checkout-delivery-opt__name">Envío Gourmet White-Glove</p>
-                    <p className="checkout-delivery-opt__desc">Transporte térmico especializado en estuche lacado sellado al vacío y presentación de mesa.</p>
-                    <span className="checkout-delivery-opt__price">Suplemento: 12,50 €</span>
-                    <span className="checkout-delivery-opt__time">45 – 55 min</span>
+                    <p className="checkout-delivery-opt__name">Domicilio</p>
+                    <p className="checkout-delivery-opt__desc">
+                      Te lo llevamos a tu puerta. Tiempo estimado de 40 a 60 minutos.
+                    </p>
+                    <span className="checkout-delivery-opt__price">
+                      Costo: {formatCOP(8000)}
+                    </span>
+                    <span className="checkout-delivery-opt__time">40 – 60 min</span>
                   </div>
                 </label>
+
                 <label className={`checkout-delivery-opt ${delivery === 'recogida' ? 'active' : ''}`}>
-                  <input type="radio" name="delivery" checked={delivery === 'recogida'} onChange={() => setDelivery('recogida')} />
-                  <div className="checkout-delivery-opt__icon">🏪</div>
+                  <input type="radio" name="delivery" checked={delivery === 'recogida'}
+                    onChange={() => setDelivery('recogida')} />
+                  <div className="checkout-delivery-opt__icon">
+                    <i className="bi bi-shop" />
+                  </div>
                   <div className="checkout-delivery-opt__content">
-                    <p className="checkout-delivery-opt__name">Recogida en Bistró (Pick-up)</p>
-                    <p className="checkout-delivery-opt__desc">Retiro prioritario en nuestro mostrador privado concierge sin esperas ni colas.</p>
-                    <span className="checkout-delivery-opt__price">Sin coste adicional</span>
-                    <span className="checkout-delivery-opt__time">Listo en 30 min</span>
+                    <p className="checkout-delivery-opt__name">Recoger en el restaurante</p>
+                    <p className="checkout-delivery-opt__desc">
+                      Ven a recoger tu pedido directamente en el local.
+                    </p>
+                    <span className="checkout-delivery-opt__price">Sin costo adicional</span>
+                    <span className="checkout-delivery-opt__time">Listo en 25 – 30 min</span>
                   </div>
                 </label>
               </div>
@@ -172,18 +201,31 @@ export default function Checkout() {
                 <div className="checkout-address">
                   <div className="checkout-addr-row">
                     <div className="checkout-field" style={{ flex: 2 }}>
-                      <label>Dirección Privada de Entrega</label>
-                      <input type="text" placeholder="Calle, número, piso..." value={addr.street} onChange={setAddrField('street')} />
+                      <label>Dirección</label>
+                      <input
+                        type="text"
+                        placeholder="Calle, número, apartamento..."
+                        value={addr.street}
+                        onChange={setAddrField('street')}
+                      />
                     </div>
                     <div className="checkout-field">
-                      <label>Código Postal</label>
-                      <input type="text" placeholder="28006, Madrid" value={addr.postal} onChange={setAddrField('postal')} />
+                      <label>Ciudad</label>
+                      <select value={addr.city} onChange={setAddrField('city')}
+                        style={{
+                          width: '100%', background: 'var(--surface)',
+                          border: '1px solid var(--border)', borderRadius: 'var(--radius)',
+                          color: 'var(--text)', padding: '10px 14px', fontSize: '13px',
+                        }}>
+                        <option>Medellín</option>
+                        <option>Bogotá</option>
+                      </select>
                     </div>
                   </div>
                   <div className="checkout-field">
                     <input
                       type="text"
-                      placeholder="Instrucciones al sommelier o conserje..."
+                      placeholder="Barrio, punto de referencia..."
                       value={addr.notes}
                       onChange={setAddrField('notes')}
                     />
@@ -192,18 +234,28 @@ export default function Checkout() {
               )}
             </div>
 
-            {/* B. Método de Pago */}
+            {/* B. Método de pago */}
             <div className="checkout-section">
               <div className="checkout-section__header">
                 <span className="checkout-section__letter">B</span>
-                <h2 className="checkout-section__title">Método de Pago Encriptado</h2>
-                <span className="badge">🔒 Garantía Bancaria 3D Secure</span>
+                <h2 className="checkout-section__title">Método de pago</h2>
+                <span className="badge">
+                  <i className="bi bi-lock-fill" /> Seguro
+                </span>
               </div>
 
               <div className="checkout-pay-tabs">
-                {([['tarjeta','💳 Tarjeta Bancaria'], ['digital','🍎 Apple / Google Pay'], ['club','⭐ Club Privé Concierge']] as const).map(([id, label]) => (
-                  <button key={id} className={`checkout-pay-tab ${payTab === id ? 'active' : ''}`} onClick={() => setPayTab(id)}>
-                    {label}
+                {([
+                  ['tarjeta', 'bi bi-credit-card', 'Tarjeta'],
+                  ['digital', 'bi bi-phone',        'Nequi / Daviplata'],
+                  ['efectivo','bi bi-cash-stack',    'Efectivo'],
+                ] as const).map(([id, icon, label]) => (
+                  <button
+                    key={id}
+                    className={`checkout-pay-tab ${payTab === id ? 'active' : ''}`}
+                    onClick={() => setPayTab(id)}
+                  >
+                    <i className={icon} /> {label}
                   </button>
                 ))}
               </div>
@@ -211,26 +263,30 @@ export default function Checkout() {
               {payTab === 'tarjeta' && (
                 <div className="checkout-card-form">
                   <div className="checkout-card-brands">
-                    {['VISA', 'MASTERCARD', 'AMEX CENTURION'].map(b => (
+                    {['VISA', 'MASTERCARD', 'AMEX'].map(b => (
                       <span key={b} className="checkout-card-brand">{b}</span>
                     ))}
                   </div>
                   <div className="checkout-field">
-                    <label>Titular de la Tarjeta</label>
-                    <input type="text" placeholder="NOMBRE APELLIDO" value={card.holder} onChange={setCardField('holder')} />
+                    <label>Nombre en la tarjeta</label>
+                    <input type="text" placeholder="NOMBRE APELLIDO"
+                      value={card.holder} onChange={setCardField('holder')} />
                   </div>
                   <div className="checkout-field">
-                    <label>Número de Tarjeta</label>
-                    <input type="text" placeholder="•••• •••• •••• 4892" value={card.number} onChange={setCardField('number')} maxLength={19} />
+                    <label>Número de tarjeta</label>
+                    <input type="text" placeholder="•••• •••• •••• 0000"
+                      value={card.number} onChange={setCardField('number')} maxLength={19} />
                   </div>
                   <div className="checkout-addr-row">
                     <div className="checkout-field">
-                      <label>Fecha de Caducidad</label>
-                      <input type="text" placeholder="09 / 28" value={card.expiry} onChange={setCardField('expiry')} maxLength={7} />
+                      <label>Vencimiento</label>
+                      <input type="text" placeholder="MM / AA"
+                        value={card.expiry} onChange={setCardField('expiry')} maxLength={7} />
                     </div>
                     <div className="checkout-field">
-                      <label>Código CVC / CVV 🛡</label>
-                      <input type="password" placeholder="•••" value={card.cvc} onChange={setCardField('cvc')} maxLength={4} />
+                      <label>CVC</label>
+                      <input type="password" placeholder="•••"
+                        value={card.cvc} onChange={setCardField('cvc')} maxLength={4} />
                     </div>
                   </div>
                 </div>
@@ -238,42 +294,94 @@ export default function Checkout() {
 
               {payTab === 'digital' && (
                 <div className="checkout-digital">
-                  <button className="checkout-digital__btn">🍎 Pagar con Apple Pay</button>
-                  <button className="checkout-digital__btn">G Pagar con Google Pay</button>
+                  <button className="checkout-digital__btn">
+                    <i className="bi bi-phone" /> Pagar con Nequi
+                  </button>
+                  <button className="checkout-digital__btn">
+                    <i className="bi bi-phone" /> Pagar con Daviplata
+                  </button>
                 </div>
               )}
 
-              {payTab === 'club' && (
+              {payTab === 'efectivo' && (
                 <div className="checkout-club-pay">
-                  <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                    Tu crédito Club Privé se aplicará automáticamente al confirmar el pedido.
-                    {profile && <span> Puntos disponibles: <strong style={{ color: 'var(--gold)' }}>{profile.points ?? 0}</strong></span>}
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                    <i className="bi bi-info-circle" /> Pagas en efectivo al recibir o recoger el
+                    pedido. Ten el valor exacto listo si es posible.
                   </p>
                 </div>
               )}
 
-              {/* Tip */}
+              {/* Propina opcional */}
               <div className="checkout-tip">
                 <div className="checkout-tip__header">
-                  <span>Gratificación al Equipo de Cocina &amp; Sommelier</span>
-                  <span className="checkout-tip__amount">+{tip}% ({TIP_AMT.toFixed(2)} €)</span>
+                  <span>
+                    Propina{' '}
+                    <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>(opcional)</span>
+                  </span>
+                  {tip > 0 && (
+                    <span className="checkout-tip__amount">
+                      +{tip}% ({formatCOP(TIP_AMT)})
+                    </span>
+                  )}
                 </div>
                 <div className="checkout-tip__opts">
-                  {([0, 10, 15, 20] as TipOption[]).map(t => (
-                    <button key={t} className={`checkout-tip__btn ${tip === t ? 'active' : ''}`} onClick={() => setTip(t)}>
-                      {t === 0 ? '0%' : `${t}%`}
+                  {([0, 5, 10, 15] as TipOption[]).map(t => (
+                    <button
+                      key={t}
+                      className={`checkout-tip__btn ${tip === t ? 'active' : ''}`}
+                      onClick={() => setTip(t)}
+                    >
+                      {t === 0 ? 'Sin propina' : `${t}%`}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Factura fiscal */}
+              {/* Código de descuento */}
+              <div className="checkout-discount">
+                <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text)', marginBottom: '8px' }}>
+                  <i className="bi bi-tag" /> Código de descuento
+                </p>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    placeholder="Ingresa tu código aquí"
+                    value={discountCode}
+                    onChange={e => setDiscountCode(e.target.value)}
+                    style={{
+                      flex: 1, background: 'var(--surface)',
+                      border: '1px solid var(--border)', borderRadius: 'var(--radius)',
+                      color: 'var(--text)', padding: '10px 14px', fontSize: '13px',
+                    }}
+                  />
+                  <button
+                    className="btn-outline"
+                    onClick={applyDiscount}
+                    style={{ fontSize: '12px', padding: '10px 16px', whiteSpace: 'nowrap' }}
+                  >
+                    Aplicar
+                  </button>
+                </div>
+                {discountMsg && (
+                  <p style={{ fontSize: '12px', color: '#5cb85c', marginTop: '6px' }}>
+                    <i className="bi bi-check-circle" /> {discountMsg}
+                  </p>
+                )}
+              </div>
+
+              {/* Factura */}
               <label className="checkout-invoice">
                 <div>
-                  <p className="checkout-invoice__label">¿Desea factura fiscal desglosada?</p>
-                  <p className="checkout-invoice__sub">Válido para empresas y deducción ejecutiva.</p>
+                  <p className="checkout-invoice__label">¿Necesitas factura?</p>
+                  <p className="checkout-invoice__sub">
+                    Indícanos tus datos de facturación al finalizar.
+                  </p>
                 </div>
-                <div className={`checkout-toggle ${invoice ? 'on' : ''}`} onClick={() => setInvoice(!invoice)} />
+                <div
+                  className={`checkout-toggle ${invoice ? 'on' : ''}`}
+                  onClick={() => setInvoice(!invoice)}
+                />
               </label>
             </div>
 
@@ -286,20 +394,21 @@ export default function Checkout() {
               {loading
                 ? 'Procesando pedido...'
                 : !user
-                  ? '🔒 Inicia sesión para pagar'
-                  : `🔒 Confirmar y Pagar ${GRAND.toFixed(2)} € →`}
+                  ? 'Inicia sesión para pagar'
+                  : `Confirmar y pagar ${formatCOP(GRAND)} →`}
             </button>
             <p className="checkout-legal">
-              Transacción procesada de forma segura. Al confirmar, aceptas nuestros Términos de Servicio.
+              Al confirmar, aceptas nuestros Términos de Servicio. Precios incluyen IVA.
             </p>
           </div>
 
           {/* ── COLUMNA DERECHA: Resumen ── */}
           <div className="checkout-summary">
-            <p className="section-label" style={{ marginBottom: '4px' }}>Comanda Privada</p>
             <div className="checkout-summary__header">
-              <h3 className="checkout-summary__title">Resumen de Degustación</h3>
-              <span className="badge">{items.length} Artículos</span>
+              <h3 className="checkout-summary__title">Resumen del pedido</h3>
+              <span className="badge">
+                {items.length} {items.length === 1 ? 'producto' : 'productos'}
+              </span>
             </div>
 
             <div className="checkout-summary__items">
@@ -308,38 +417,55 @@ export default function Checkout() {
                   <img src={item.image} alt={item.name} className="checkout-summary__img" />
                   <div className="checkout-summary__info">
                     <p className="checkout-summary__name">{item.name}</p>
-                    {item.cooking && <span className="checkout-summary__tag">Punto: {item.cooking}</span>}
+                    {item.cooking && (
+                      <span className="checkout-summary__tag">Término: {item.cooking}</span>
+                    )}
+                    <span className="checkout-summary__tag">x{item.quantity}</span>
                   </div>
-                  <span className="checkout-summary__price">{(item.price * item.quantity).toFixed(2)} €</span>
+                  <span className="checkout-summary__price">
+                    {formatCOP(item.price * item.quantity)}
+                  </span>
                 </div>
               ))}
             </div>
 
             <div className="checkout-summary__breakdown">
-              <div className="checkout-summary__row"><span>Subtotal Gastronómico</span><span>{total.toFixed(2)} €</span></div>
-              <div className="checkout-summary__row"><span>Envío White-Glove Climatizado</span><span>{SHIPPING.toFixed(2)} €</span></div>
-              <div className="checkout-summary__row"><span>Impuestos (IVA 10%)</span><span>{TAX.toFixed(2)} €</span></div>
-              <div className="checkout-summary__row gold"><span>Gratificación ({tip}%)</span><span>+ {TIP_AMT.toFixed(2)} €</span></div>
+              <div className="checkout-summary__row">
+                <span>Subtotal</span><span>{formatCOP(total)}</span>
+              </div>
+              <div className="checkout-summary__row">
+                <span>Domicilio</span>
+                <span>{SHIPPING > 0 ? formatCOP(SHIPPING) : 'Gratis'}</span>
+              </div>
+              {tip > 0 && (
+                <div className="checkout-summary__row">
+                  <span>Propina ({tip}%)</span><span>+ {formatCOP(TIP_AMT)}</span>
+                </div>
+              )}
+              {discount > 0 && (
+                <div className="checkout-summary__row" style={{ color: '#5cb85c' }}>
+                  <span>Descuento</span><span>- {formatCOP(discount)}</span>
+                </div>
+              )}
             </div>
 
             <div className="checkout-summary__total">
-              <span>Importe Total</span>
-              <span className="checkout-summary__total-amount">{GRAND.toFixed(2)} €</span>
+              <span>Total</span>
+              <span className="checkout-summary__total-amount">{formatCOP(GRAND)}</span>
             </div>
-            <p className="checkout-summary__total-sub">Cargos finales con IVA</p>
+            <p className="checkout-summary__total-sub">Precios incluyen IVA</p>
 
-            {/* Puntos a ganar */}
             {user && (
               <div style={{
-                background: 'rgba(201,168,76,0.08)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius)',
-                padding: '12px 16px',
-                marginTop: '16px',
-                fontSize: '13px',
-                color: 'var(--text-muted)',
+                background: 'rgba(201,168,76,0.08)', border: '1px solid var(--border)',
+                borderRadius: 'var(--radius)', padding: '12px 16px',
+                marginTop: '16px', fontSize: '13px', color: 'var(--text-muted)',
               }}>
-                ⭐ Ganarás <strong style={{ color: 'var(--gold)' }}>{Math.floor(GRAND)} puntos</strong> Gourmet Club con este pedido.
+                <i className="bi bi-star" /> Ganarás{' '}
+                <strong style={{ color: 'var(--gold)' }}>
+                  {Math.floor(GRAND / 1000)} puntos
+                </strong>{' '}
+                con este pedido.
               </div>
             )}
           </div>

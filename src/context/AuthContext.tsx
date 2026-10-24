@@ -10,26 +10,40 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 
+// ── Tipos ──────────────────────────────────────────────────────────────────
+
+export type UserRole = 'administrador' | 'dueño' | 'asesor' | 'cajero' | 'cliente'
+
 export interface UserProfile {
   displayName: string
-  email: string
-  points: number
-  membership: 'ESTÁNDAR' | 'GOLD' | 'NOIR'
-  memberSince: string
+  email:       string
+  role:        UserRole
+  points:      number
+  createdAt:   string
 }
 
 interface AuthContextType {
-  user: User | null
-  profile: UserProfile | null
-  loading: boolean
-  logout: () => Promise<void>
+  user:          User | null
+  profile:       UserProfile | null
+  loading:       boolean
+  logout:        () => Promise<void>
   signInWithGoogle: () => Promise<void>
-  refreshProfile: () => Promise<void>
+  refreshProfile:   () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType | null>(null)
+// ── Helpers ────────────────────────────────────────────────────────────────
 
-// Crea o recupera el documento del usuario en Firestore
+// Ruta del dashboard según el rol
+export function getDashboardRoute(role: UserRole): string {
+  switch (role) {
+    case 'administrador': return '/admin'
+    case 'dueño':         return '/dueno'
+    case 'asesor':        return '/asesor'
+    case 'cajero':        return '/cajero'
+    default:              return '/'
+  }
+}
+
 async function fetchOrCreateProfile(user: User): Promise<UserProfile> {
   const ref  = doc(db, 'usuarios', user.uid)
   const snap = await getDoc(ref)
@@ -38,20 +52,27 @@ async function fetchOrCreateProfile(user: User): Promise<UserProfile> {
     return snap.data() as UserProfile
   }
 
-  // Primera vez: creamos el documento con valores por defecto
+  // Primera vez: se crea como cliente por defecto
+  // Los demás roles se asignan manualmente desde el panel de administrador
   const newProfile: UserProfile = {
-    displayName: user.displayName ?? user.email?.split('@')[0] ?? 'Nuevo Socio',
+    displayName: user.displayName ?? user.email?.split('@')[0] ?? 'Usuario',
     email:       user.email ?? '',
+    role:        'cliente',
     points:      0,
-    membership:  'ESTÁNDAR',
-    memberSince: new Date().toLocaleDateString('es-ES', {
+    createdAt:   new Date().toLocaleDateString('es-CO', {
+      day:   'numeric',
       month: 'long',
       year:  'numeric',
     }),
   }
+
   await setDoc(ref, newProfile)
   return newProfile
 }
+
+// ── Contexto ───────────────────────────────────────────────────────────────
+
+const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user,    setUser]    = useState<User | null>(null)
@@ -85,7 +106,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(p)
   }
 
-  // Útil si actualizas puntos o membresía desde otra parte de la app
   const refreshProfile = async () => {
     if (!user) return
     const ref  = doc(db, 'usuarios', user.uid)
