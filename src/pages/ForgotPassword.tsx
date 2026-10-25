@@ -6,22 +6,23 @@ import './Login.css'
 import './ForgotPassword.css'
 
 export default function ForgotPassword() {
-  const [email, setEmail]     = useState('')
+  const [email,   setEmail]   = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError]     = useState('')
-  const [sent, setSent]       = useState(false)
+  const [error,   setError]   = useState('')
+  const [sent,    setSent]    = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
     try {
-      // Firebase envía el correo de recuperación automáticamente
       await sendPasswordResetEmail(auth, email)
       setSent(true)
     } catch (err: any) {
-      if (err.code === 'auth/user-not-found') {
-        setError('No encontramos una cuenta con ese correo.')
+      // Firebase no revela si el correo existe o no (seguridad)
+      // Solo fallará por errores de red o correo mal formado
+      if (err.code === 'auth/invalid-email') {
+        setError('El correo ingresado no tiene un formato válido.')
       } else {
         setError('Error al enviar el correo. Intenta de nuevo.')
       }
@@ -33,22 +34,26 @@ export default function ForgotPassword() {
   return (
     <main className="forgot-page">
       <div className="forgot-card">
+
         {/* Ícono */}
-        <div className="forgot-icon">🔑</div>
+        <div className="forgot-icon">
+          <i className="bi bi-lock" />
+        </div>
 
-        <p className="section-label" style={{ textAlign: 'center', marginBottom: '8px' }}>
-          Acceso Exclusivo
-        </p>
-        <h1 className="forgot-title">Recuperar Contraseña</h1>
+        <h1 className="forgot-title">Recuperar contraseña</h1>
         <p className="forgot-desc">
-          Introduce el correo electrónico asociado a tu cuenta o membresía.
-          Te enviaremos un enlace de restablecimiento seguro válido por 15 minutos.
+          Ingresa el correo de tu cuenta y te enviaremos un enlace
+          para restablecer tu contraseña.
         </p>
 
-        {/* Estado: enviado */}
         {sent ? (
           <div className="auth-success" style={{ textAlign: 'center' }}>
-            ✓ Enlace enviado a <strong>{email}</strong>. Revisa tu bandeja de entrada.
+            <i className="bi bi-check-circle" style={{ fontSize: '20px', display: 'block', marginBottom: '8px' }} />
+            Enviamos un enlace a <strong>{email}</strong>.
+            <br />
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px', display: 'block' }}>
+              Revisa tu bandeja de entrada y también la carpeta de spam.
+            </span>
           </div>
         ) : (
           <>
@@ -56,15 +61,12 @@ export default function ForgotPassword() {
 
             <form onSubmit={handleSubmit} className="auth-form">
               <div className="auth-field">
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <label>Correo Electrónico</label>
-                  <span style={{ fontSize: '10px', color: 'var(--gold)', letterSpacing: '0.08em' }}>REQUERIDO</span>
-                </div>
+                <label>Correo electrónico</label>
                 <div className="auth-field__input-wrap">
-                  <span className="auth-field__icon">✉</span>
+                  <i className="bi bi-envelope auth-field__icon" />
                   <input
                     type="email"
-                    placeholder="ejemplo@goldenbite.com"
+                    placeholder="correo@ejemplo.com"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     required
@@ -73,32 +75,25 @@ export default function ForgotPassword() {
               </div>
 
               <button type="submit" className="btn-gold auth-submit" disabled={loading}>
-                {loading ? 'Enviando...' : 'Enviar Enlace de Recuperación →'}
+                {loading
+                  ? 'Enviando...'
+                  : <><i className="bi bi-send" /> Enviar enlace de recuperación</>}
               </button>
             </form>
           </>
         )}
 
-        {/* Asistencia concierge */}
         <div className="forgot-concierge">
-          <span className="forgot-concierge__dot">·</span>
-          <div>
-            <p className="forgot-concierge__label">Asistencia de Concierge</p>
-            <p className="forgot-concierge__text">
-              ¿No recibes el correo? Revisa tu bandeja de spam o solicita asistencia
-              inmediata a{' '}
-              <a href="mailto:concierge@goldenbite.com">concierge@goldenbite.com</a>.
-            </p>
-          </div>
+          <i className="bi bi-info-circle" />
+          <p className="forgot-concierge__text">
+            ¿No recibes el correo? Revisa la carpeta de spam o escríbenos a{' '}
+            <a href="mailto:soporte@goldenbite.com">soporte@goldenbite.com</a>.
+          </p>
         </div>
 
-        <Link to="/login" className="forgot-back">← Volver a Iniciar Sesión</Link>
-
-        <div className="forgot-footer">
-          <span>🔒 Cifrado de 256 Bits</span>
-          <span>•</span>
-          <span>🛡 Privacidad Gourmet</span>
-        </div>
+        <Link to="/login" className="forgot-back">
+          <i className="bi bi-arrow-left" /> Volver a iniciar sesión
+        </Link>
       </div>
     </main>
   )

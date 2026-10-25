@@ -2,13 +2,24 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatCOP } from '../utils/format'
 import { useCart } from '../context/CartContext'
-import { dishes, categories } from '../data/dishes'
+import { categories } from '../data/dishes'
+import { useDishes }  from '../hooks/usedishes'
 import './Menu.css'
 
 export default function Menu() {
   const [activeCategory, setActiveCategory] = useState('Todos')
   const [addedId,        setAddedId]        = useState<string | null>(null)
-  const { addItem } = useCart()
+  const { addItem }   = useCart()
+  const { dishes, loading } = useDishes()
+
+  // Muestra loading mientras carga desde Firestore
+  if (loading) return (
+    <main style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ color: 'var(--gold)', fontFamily: 'var(--font-serif)', fontSize: '18px' }}>
+        Cargando menú...
+      </p>
+    </main>
+  )
 
   const filtered =
     activeCategory === 'Todos'

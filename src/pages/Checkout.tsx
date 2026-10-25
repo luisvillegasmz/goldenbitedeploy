@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, addDoc, doc, updateDoc, increment, serverTimestamp } from 'firebase/firestore'
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, increment, serverTimestamp } from 'firebase/firestore'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
 import { db } from '../firebase'
@@ -42,17 +42,51 @@ export default function Checkout() {
 
   const generateOrderCode = () => 'GB-' + Math.floor(Math.random() * 90000 + 10000)
 
-  const applyDiscount = () => {
-    // Lógica básica — se conectará a Firestore en el paso del flujo de pedidos
-    if (discountCode.trim().toUpperCase() === 'GOLDEN10') {
-      const amount = total * 0.1
+  const applyDiscount = async () => {
+    const trimmed = discountCode.trim().toUpperCase()
+    if (!trimmed) return
+
+    try {
+      const q    = query(collection(db, 'descuentos'), where('code', '==', trimmed))
+      const snap = await getDocs(q)
+
+      if (snap.empty) {
+        setDiscount(0)
+        setDiscountMsg('')
+        setError('Código de descuento inválido.')
+        return
+      }
+
+      const data   = snap.docs[0].data()
+      const ref    = snap.docs[0].ref
+
+      if (!data.active) {
+        setError('Este código ya no está activo.')
+        return
+      }
+
+      if (data.maxUses && data.uses >= data.maxUses) {
+        setError('Este código ha alcanzado su límite de usos.')
+        return
+      }
+
+      const amount = data.type === 'percentage'
+        ? total * (data.value / 100)
+        : Math.min(data.value, total)
+
       setDiscount(amount)
-      setDiscountMsg(`Descuento del 10% aplicado: -${formatCOP(amount)}`)
+      setDiscountMsg(
+        data.type === 'percentage'
+          ? `Descuento del ${data.value}% aplicado: -${formatCOP(amount)}`
+          : `Descuento de ${formatCOP(data.value)} aplicado`
+      )
       setError('')
-    } else {
-      setDiscount(0)
-      setDiscountMsg('')
-      setError('Código de descuento inválido.')
+
+      // Incrementar el contador de usos
+      await updateDoc(ref, { uses: increment(1) })
+
+    } catch {
+      setError('Error al validar el código. Intenta de nuevo.')
     }
   }
 

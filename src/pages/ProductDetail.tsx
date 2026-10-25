@@ -2,15 +2,22 @@ import { useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { formatCOP } from '../utils/format'
 import { useCart } from '../context/CartContext'
-import { dishes } from '../data/dishes'
+import { useDishes } from '../hooks/usedishes'
 import './ProductDetail.css'
 
 export default function ProductDetail() {
-  const { id }     = useParams<{ id: string }>()
-  const navigate   = useNavigate()
-  const { addItem } = useCart()
-
+  const { id }      = useParams<{ id: string }>()
+  const { dishes, loading } = useDishes()
+  // ...
   const product = dishes.find(d => d.id === id)
+
+  if (loading) return (
+    <main style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ color: 'var(--gold)', fontFamily: 'var(--font-serif)', fontSize: '18px' }}>
+        Cargando...
+      </p>
+    </main>
+  )
 
   const [activeImage,    setActiveImage]    = useState(0)
   const [cooking,        setCooking]        = useState(product?.cookingOptions?.[1]?.id ?? '')

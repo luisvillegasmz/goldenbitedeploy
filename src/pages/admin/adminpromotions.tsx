@@ -1,150 +1,359 @@
+import { useEffect, useState } from 'react'
+import {
+  collection, getDocs, addDoc, updateDoc,
+  deleteDoc, doc, serverTimestamp, query, orderBy,
+} from 'firebase/firestore'
+import { db } from '../../firebase'
 import AdminLayout from '../../components/adminlayout'
+import { formatCOP } from '../../utils/format'
 import './AdminPromotions.css'
 
-const promos = [
-  {
-    id: 1, status: 'ACTIVA',
-    tags: ['Socios Noir', 'Trufa-Noir'],
-    title: 'Experiencia Trufa Blanca de Alba & Champagne',
-    desc:  '20% descuento exclusivo en maridaje vertical de Dom Pérignon con 4 pases de…',
-    date:  'Hasta 30 Nov 2024', loc: 'Madrid & Barcelona',
-    prog: 84, total: 100, metric: 'Cuota de Redención Privada',
-  },
-  {
-    id: 2, status: 'ACTIVA',
-    tags: ['Gourmet Club', 'Wagyu-A5'],
-    title: 'Semana del Wagyu A5 Miyazaki',
-    desc:  'Menú degustación con copa de bienvenida Laurent-Perrier Cuvée Rosé y corte…',
-    date:  '15 Nov – 25 Nov 2024', loc: 'Madrid & Barcelona',
-    prog: 156, total: 200, metric: 'Reservas Confirmadas',
-  },
-  {
-    id: 3, status: 'ACTIVA',
-    tags: ['Nuevos Clientes', 'Bienvenida-GB'],
-    title: 'Maridaje de Bienvenida Primera Reserva',
-    desc:  'Copa de Champagne Brut cortesía del Sommelier y bocado de aperitivo con flor…',
-    date:  'Continuo Anual', loc: 'Madrid, Barcelona & CDMX',
-    prog: 188, total: 300, metric: 'Conversión de Primera Mesa',
-  },
-  {
-    id: 4, status: 'PROGRAMADA',
-    tags: ['Segmento: Abierto', 'Valentín-Noir'],
-    title: 'Cena Ciega San Valentín Gastro',
-    desc:  'Menú 7 pasos cerrado con revelación a ciegas por el Chef Ejecutivo…',
-    date:  'Febrero 14 – 16, 2025', loc: 'Todas las Sedes',
-    prog: 0, total: 100, metric: 'Lista de Espera Privé',
-  },
-]
+interface Descuento {
+  id:          string
+  code:        string
+  type:        'percentage' | 'fixed'
+  value:       number
+  description: string
+  active:      boolean
+  uses:        number
+  maxUses:     number | null
+  createdAt:   any
+}
 
-const rules = [
-  { title: 'Regla de Reserva Anticipada', body: 'Las experiencias con maridaje vertical exigen notificación mínima de 24h para decantación y atemperado en cava subterráneo.' },
-  { title: 'Límite por Mesa',             body: 'Máximo un código promocional por mesa o reserva corporativa. Acumulable únicamente con créditos directos Noir Club.' },
-  { title: 'Exclusiones de Cosecha',      body: 'Vinos calificados "Gran Reserva Centenario" no entran dentro de descuentos porcentuales directos salvo autorización del Sommelier Jefe.' },
-]
+const empty = { code: '', type: 'percentage' as const, value: 10, description: '', maxUses: '' }
 
 export default function AdminPromotions() {
+  const [descuentos, setDescuentos] = useState<Descuento[]>([])
+  const [loading,    setLoading]    = useState(true)
+  const [saving,     setSaving]     = useState(false)
+  const [showForm,   setShowForm]   = useState(false)
+  const [form,       setForm]       = useState(empty)
+  const [msg,        setMsg]        = useState('')
+
+  const fetch = async () => {
+    setLoading(true)
+    try {
+      const q    = query(collection(db, 'descuentos'), orderBy('createdAt', 'desc'))
+      const snap = await getDocs(q)
+      setDescuentos(snap.docs.map(d => ({ id: d.id, ...d.data() } as Descuento)))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { fetch() }, [])
+
+  const notify = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3000) }
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.code.trim()) return
+    setSaving(true)
+    try {
+      await addDoc(collection(db, 'descuentos'), {
+        code:        form.code.trim().toUpperCase(),
+        type:        form.type,
+        value:       Number(form.value),
+        description: form.description,
+        active:      true,
+        uses:        0,
+        maxUses:     form.maxUses ? Number(form.maxUses) : null,
+        createdAt:   serverTimestamp(),
+      })
+      setForm(empty)
+      setShowForm(false)
+      await fetch()
+      notify('Código creado correctamente.')
+    } catch {
+      notify('Error al crear el código.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const toggleActive = async (d: Descuento) => {
+    try {
+      await updateDoc(doc(db, 'descuentos', d.id), { active: !d.active })
+      setDescuentos(prev => prev.map(x => x.id === d.id ? { ...x, active: !x.active } : x))
+    } catch {
+      notify('Error al actualizar.')
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('¿Eliminar este código de descuento?')) return
+    try {
+      await deleteDoc(doc(db, 'descuentos', id))
+      setDescuentos(prev => prev.filter(d => d.id !== id))
+      notify('Código eliminado.')
+    } catch {
+      notify('Error al eliminar.')
+    }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width:        '100%',
+    background:   'var(--bg)',
+    border:       '1px solid var(--border)',
+    borderRadius: 'var(--radius)',
+    color:        'var(--text)',
+    padding:      '10px 14px',
+    fontSize:     '13px',
+    boxSizing:    'border-box',
+  }
+
   return (
     <AdminLayout>
       <div className="admin-section-header">
         <div>
-          <p className="section-label" style={{ marginBottom:'4px' }}>Membresía & Experiencias · Estacional Otoño-Invierno</p>
-          <h1 className="admin-section-title" style={{ fontSize:'clamp(18px,2.5vw,26px)' }}>
-            Gestión de Promociones y Experiencias de Temporada
-          </h1>
+          <h1 className="admin-section-title">Códigos de descuento</h1>
           <p className="admin-section-sub">
-            Control de beneficios de membresía, códigos de cata privada y campañas gastronómicas activas.
+            Crea, activa y desactiva códigos para los clientes.
           </p>
         </div>
-        <button className="btn-gold" style={{ fontSize:'11px', padding:'10px 16px' }}>
-          + Crear Nueva Promoción
+        <button className="btn-gold" style={{ fontSize: '12px', padding: '10px 16px' }}
+          onClick={() => setShowForm(!showForm)}>
+          <i className={`bi bi-${showForm ? 'x' : 'plus-lg'}`} />
+          {showForm ? ' Cancelar' : ' Nuevo código'}
         </button>
       </div>
 
-      <div className="admin-stats">
+      {msg && (
+        <div style={{
+          background:   msg.includes('Error') ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)',
+          border:       `1px solid ${msg.includes('Error') ? '#ef4444' : '#10b981'}`,
+          borderRadius: 'var(--radius)',
+          padding:      '12px 16px',
+          marginBottom: '16px',
+          fontSize:     '13px',
+          color:        msg.includes('Error') ? '#ef4444' : '#10b981',
+        }}>
+          <i className={`bi bi-${msg.includes('Error') ? 'exclamation-circle' : 'check-circle'}`} /> {msg}
+        </div>
+      )}
+
+      {/* Formulario de creación */}
+      {showForm && (
+        <div style={{
+          background:   'var(--surface)',
+          border:       '1px solid var(--border)',
+          borderRadius: 'var(--radius)',
+          padding:      '20px',
+          marginBottom: '24px',
+        }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)', marginBottom: '16px' }}>
+            <i className="bi bi-tag" /> Nuevo código de descuento
+          </h3>
+          <form onSubmit={handleCreate} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+            <div>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Código *
+              </label>
+              <input
+                style={inputStyle}
+                placeholder="ej: GOLDEN10"
+                value={form.code}
+                onChange={e => setForm(p => ({ ...p, code: e.target.value.toUpperCase() }))}
+                required
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Tipo
+              </label>
+              <select
+                style={inputStyle}
+                value={form.type}
+                onChange={e => setForm(p => ({ ...p, type: e.target.value as any }))}
+              >
+                <option value="percentage">Porcentaje (%)</option>
+                <option value="fixed">Valor fijo (COP)</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {form.type === 'percentage' ? 'Descuento (%)' : 'Descuento (COP)'}
+              </label>
+              <input
+                style={inputStyle}
+                type="number"
+                min="1"
+                placeholder={form.type === 'percentage' ? '10' : '15000'}
+                value={form.value}
+                onChange={e => setForm(p => ({ ...p, value: Number(e.target.value) }))}
+                required
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Usos máx. (vacío = ilimitado)
+              </label>
+              <input
+                style={inputStyle}
+                type="number"
+                min="1"
+                placeholder="100"
+                value={form.maxUses}
+                onChange={e => setForm(p => ({ ...p, maxUses: e.target.value }))}
+              />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Descripción
+              </label>
+              <input
+                style={inputStyle}
+                placeholder="ej: 10% de descuento en tu primer pedido"
+                value={form.description}
+                onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+              />
+            </div>
+            <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn-outline"
+                style={{ fontSize: '12px', padding: '10px 16px' }}
+                onClick={() => { setShowForm(false); setForm(empty) }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="btn-gold"
+                disabled={saving}
+                style={{ fontSize: '12px', padding: '10px 20px' }}
+              >
+                {saving ? 'Guardando...' : <><i className="bi bi-check2" /> Crear código</>}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Stats */}
+      <div className="admin-stats" style={{ marginBottom: '20px' }}>
         {[
-          { label:'Promociones Activas',       icon:'🎯', value:'4',       sub:'2 finalizan en 14 días' },
-          { label:'Redenciones Este Mes',       icon:'📋', value:'428 usos', sub:'+18.4% vs mes anterior' },
-          { label:'Ingresos por Campañas',      icon:'💰', value:'€38.400', sub:'Ticket prom. €89.70/pax' },
-          { label:'Tasa de Conversión Privé',   icon:'🏷', value:'34.2%',   sub:'Objetivo mensual superado' },
+          { label: 'Total códigos',   value: descuentos.length },
+          { label: 'Activos',         value: descuentos.filter(d => d.active).length },
+          { label: 'Inactivos',       value: descuentos.filter(d => !d.active).length },
+          { label: 'Total usos',      value: descuentos.reduce((a, d) => a + (d.uses ?? 0), 0) },
         ].map(s => (
           <div key={s.label} className="admin-stat-card">
-            <div className="admin-stat-card__label">{s.label}<span>{s.icon}</span></div>
-            <div className="admin-stat-card__value" style={{ fontSize:'20px' }}>{s.value}</div>
-            <div className="admin-stat-card__sub">{s.sub}</div>
+            <div className="admin-stat-card__value">{s.value}</div>
+            <div className="admin-stat-card__sub">{s.label}</div>
           </div>
         ))}
       </div>
 
-      {/* Tabs */}
-      <div className="promos-tabs">
-        {['Todas (6)', 'Campañas Activas (4)', 'Programadas (1)', 'Exclusivas Noir (2)', 'Finalizadas (8)'].map((t, i) => (
-          <button key={t} className={`promos-tab ${i === 0 ? 'active' : ''}`}>{t}</button>
-        ))}
-      </div>
-
-      {/* Grid de promociones */}
-      <div className="promos-grid">
-        {promos.map(p => (
-          <div key={p.id} className="promo-card">
-            <div className="promo-card__head">
-              <div style={{ display:'flex', gap:'5px', flexWrap:'wrap' }}>
-                {p.tags.map(t => <span key={t} className="badge" style={{ fontSize:'9px' }}>{t}</span>)}
-              </div>
-              <span className={`promo-card__status ${p.status === 'ACTIVA' ? 'active' : 'scheduled'}`}>
-                ● {p.status}
-              </span>
-            </div>
-
-            <h3 className="promo-card__title">{p.title}</h3>
-            <p className="promo-card__desc">{p.desc}</p>
-
-            <div className="promo-card__meta">
-              <span>📅 {p.date}</span>
-              <span>📍 {p.loc}</span>
-            </div>
-
-            {p.prog > 0 && (
-              <div className="promo-card__prog">
-                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'5px' }}>
-                  <span style={{ fontSize:'10px', color:'var(--text-muted)' }}>{p.metric}</span>
-                  <span style={{ fontSize:'10px', color:'var(--gold)', fontWeight:600 }}>
-                    {p.prog} / {p.total} ({Math.round(p.prog / p.total * 100)}%)
-                  </span>
-                </div>
-                <div className="promo-card__prog-bar">
-                  <div className="promo-card__prog-fill" style={{ width:`${Math.min(p.prog / p.total * 100, 100)}%` }} />
-                </div>
-              </div>
-            )}
-
-            <div className="promo-card__actions">
-              <button className="promo-card__link">📊 Ver Analítica</button>
-              <button className="btn-outline promo-card__btn">⏸ Pausar</button>
-              <button className="btn-gold promo-card__btn">✏ Editar</button>
-            </div>
+      {/* Lista de códigos */}
+      <div style={{
+        background:   'var(--surface)',
+        border:       '1px solid var(--border)',
+        borderRadius: 'var(--radius)',
+        overflow:     'hidden',
+      }}>
+        {loading ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>
+            Cargando códigos...
           </div>
-        ))}
-      </div>
-
-      {/* Protocolo */}
-      <div className="promos-protocol">
-        <div style={{ display:'flex', gap:'12px', alignItems:'center', marginBottom:'16px' }}>
-          <span style={{ fontSize:'18px' }}>⭐</span>
-          <div>
-            <p style={{ fontSize:'13px', color:'var(--text)', fontWeight:500 }}>
-              Protocolo de Aplicación y Exclusiones de Bodega
-            </p>
-            <p style={{ fontSize:'10px', color:'var(--text-dim)' }}>Actualizado por Maître D' hace 3 horas</p>
+        ) : descuentos.length === 0 ? (
+          <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>
+            <i className="bi bi-tag" style={{ fontSize: '36px', display: 'block', marginBottom: '12px' }} />
+            No hay códigos de descuento todavía.
+            <br />
+            <span style={{ fontSize: '12px' }}>Crea el primero con el botón de arriba.</span>
           </div>
-        </div>
-        <div className="promos-rules">
-          {rules.map(r => (
-            <div key={r.title} className="promos-rule">
-              <p style={{ fontSize:'12px', color:'var(--gold)', fontWeight:600, marginBottom:'4px' }}>{r.title}</p>
-              <p style={{ fontSize:'11px', color:'var(--text-muted)', lineHeight:'1.6' }}>{r.body}</p>
-            </div>
-          ))}
-        </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Descuento</th>
+                  <th>Descripción</th>
+                  <th>Usos</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {descuentos.map(d => (
+                  <tr key={d.id}>
+                    <td>
+                      <span style={{
+                        fontFamily:    'monospace',
+                        fontWeight:    700,
+                        color:         'var(--gold)',
+                        fontSize:      '14px',
+                        letterSpacing: '0.05em',
+                      }}>
+                        {d.code}
+                      </span>
+                    </td>
+                    <td style={{ color: 'var(--text)', fontWeight: 600 }}>
+                      {d.type === 'percentage'
+                        ? `${d.value}%`
+                        : formatCOP(d.value)}
+                    </td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: '12px', maxWidth: '200px' }}>
+                      {d.description || '—'}
+                    </td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+                      {d.uses ?? 0}
+                      {d.maxUses ? ` / ${d.maxUses}` : ' / ∞'}
+                    </td>
+                    <td>
+                      <span style={{
+                        fontSize:     '11px',
+                        fontWeight:   600,
+                        padding:      '3px 10px',
+                        borderRadius: '20px',
+                        background:   d.active ? 'rgba(16,185,129,0.15)' : 'rgba(107,114,128,0.15)',
+                        color:        d.active ? '#10b981' : '#6b7280',
+                      }}>
+                        {d.active ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button
+                          onClick={() => toggleActive(d)}
+                          title={d.active ? 'Desactivar' : 'Activar'}
+                          style={{
+                            background:   'transparent',
+                            border:       '1px solid var(--border)',
+                            borderRadius: 'var(--radius)',
+                            padding:      '6px 10px',
+                            cursor:       'pointer',
+                            color:        'var(--text-muted)',
+                            fontSize:     '12px',
+                          }}
+                        >
+                          <i className={`bi bi-${d.active ? 'pause' : 'play'}`} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(d.id)}
+                          title="Eliminar"
+                          style={{
+                            background:   'transparent',
+                            border:       '1px solid #ef444440',
+                            borderRadius: 'var(--radius)',
+                            padding:      '6px 10px',
+                            cursor:       'pointer',
+                            color:        '#ef4444',
+                            fontSize:     '12px',
+                          }}
+                        >
+                          <i className="bi bi-trash" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </AdminLayout>
   )

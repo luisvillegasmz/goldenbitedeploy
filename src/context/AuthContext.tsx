@@ -27,7 +27,7 @@ interface AuthContextType {
   profile:       UserProfile | null
   loading:       boolean
   logout:        () => Promise<void>
-  signInWithGoogle: () => Promise<void>
+  signInWithGoogle: () => Promise<User>
   refreshProfile:   () => Promise<void>
 }
 
@@ -104,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const p        = await fetchOrCreateProfile(result.user)
     setUser(result.user)
     setProfile(p)
+    return result.user   // ← agregar esta línea
   }
 
   const refreshProfile = async () => {

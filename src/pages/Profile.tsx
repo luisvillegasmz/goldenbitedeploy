@@ -1,50 +1,78 @@
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore'
+import { db } from '../firebase'
 import { useAuth } from '../context/AuthContext'
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { formatCOP } from '../utils/format'
+import type { Order } from '../types/order'
+import { STATUS_LABEL, STATUS_COLOR } from '../types/order'
 import './Profile.css'
 
-const orders = [
-  {
-    id: 'GB-2025-8819', date: '14 de Febrero, 2025',
-    rest: 'Restaurante Salamanca', total: 285,
-    status: 'Entregado / Disfrutado',
-    items: ['Corte Wagyu Miyazaki', 'Risotto Meloso de Trufa', 'Valbuena 5° Año (2018)'],
-    pts: 28,
-  },
-  {
-    id: 'GB-2024-9104', date: '31 de Diciembre, 2024',
-    rest: 'Evento Privado Domicilio', total: 520,
-    status: 'Completado',
-    items: ['Menú Degustación 7 Pasos — Chef Privado & Menaje incluido'],
-    pts: 52,
-  },
-]
-
-const privileges = [
-  { tag:'Prioridad 1',    icon:'🍄', name:'Acceso a Trufa Blanca de Alba',    desc:'Reserva garantizada con 48h de antelación durante la veda de otoño en mesas centrales.' },
-  { tag:'Bimestral',      icon:'🍾', name:'Cata Privada con Sumiller',         desc:'Invitación sin cargo para 2 personas en la Cripta Subterránea con maridaje vertical.' },
-  { tag:'Línea Directa',  icon:'📞', name:'Línea de Sommelier 24/7',           desc:'Asesoramiento instantáneo para adquisición de caldos raros, cavas particulares y bodas.' },
-]
-
-const badges = [
-  { icon:'🏆', name:'Catador Experto de Trufa', level:'Nivel Supremo' },
-  { icon:'🪑', name:'Mesa Preferente',           level:'Siempre Disponible' },
-  { icon:'🍷', name:'Socio Sommelier',            level:'Bodega de Guarda' },
-]
-
 const tabs = [
-  'Historial de Pedidos & Experiencias',
-  'Próximas Reservas de Mesa',
-  'Direcciones & Preferencias',
-  'Métodos de Pago & Seguridad',
+  'Mis pedidos',
+  'Mis datos',
+  'Seguridad',
 ]
+
+function formatDate(ts: any): string {
+  if (!ts?.toDate) return '—'
+  return ts.toDate().toLocaleDateString('es-CO', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  })
+}
 
 export default function Profile() {
-  const [activeTab, setActiveTab] = useState(0)
-  const { user, profile } = useAuth()
+  const navigate             = useNavigate()
+  const { user, profile, logout } = useAuth()
 
-  // Mientras carga o no hay sesión, no renderizamos nada raro
+  const [activeTab, setActiveTab]   = useState(0)
+  const [orders,    setOrders]      = useState<Order[]>([])
+  const [loadingOrders, setLoadingOrders] = useState(true)
+
+  // Redirigir si no está autenticado
+  useEffect(() => {
+    if (user === null) navigate('/login')
+  }, [user])
+
+  // Cargar pedidos del usuario
+  useEffect(() => {
+    if (!user) return
+    const fetch = async () => {
+      setLoadingOrders(true)
+      try {
+        const q    = query(
+          collection(db, 'pedidos'),
+          where('userId', '==', user.uid)
+        )
+        const snap = await getDocs(q)
+        const list = snap.docs
+          .map(d => ({ id: d.id, ...d.data() } as Order))
+          .sort((a, b) => {
+            const ta = a.createdAt?.toDate?.()?.getTime() ?? 0
+            const tb = b.createdAt?.toDate?.()?.getTime() ?? 0
+            return tb - ta
+          })
+        setOrders(list)
+      } finally {
+        setLoadingOrders(false)
+      }
+    }
+    fetch()
+  }, [user])
+
   if (!user || !profile) return null
+
+  const initials = profile.displayName
+    .split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('')
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login')
+  }
+
+  const totalGastado = orders
+    .filter(o => o.status === 'entregado')
+    .reduce((a, o) => a + o.total, 0)
 
   return (
     <main className="profile-page">
@@ -54,26 +82,109 @@ export default function Profile() {
           {/* ── COLUMNA IZQUIERDA ── */}
           <div className="profile-left">
 
-            {/* Privilegios */}
-            <div className="profile-box">
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px' }}>
-                <p style={{ fontSize:'13px', color:'var(--text)', fontWeight:500 }}>
-                  ⭐ Privilegios Exclusivos Nivel Noir
-                </p>
-                <Link to="#" style={{ fontSize:'11px', color:'var(--gold)' }}>Contactar Mayordomo →</Link>
-              </div>
-              {privileges.map(p => (
-                <div key={p.name} className="profile-privilege">
-                  <span style={{ fontSize:'18px', flexShrink:0 }}>{p.icon}</span>
-                  <div>
-                    <p style={{ fontSize:'12px', color:'var(--text)', fontWeight:500, marginBottom:'3px' }}>
-                      {p.name} <span className="badge" style={{ fontSize:'8px' }}>{p.tag}</span>
-                    </p>
-                    <p style={{ fontSize:'11px', color:'var(--text-muted)', lineHeight:'1.5' }}>{p.desc}</p>
-                  </div>
+            {/* Tarjeta de usuario */}
+            <div className="membership-card">
+              <div className="membership-card__top">
+                <div>
+                  <p className="membership-card__brand">Golden Bite</p>
+                  <p className="membership-card__sub">
+                    {profile.role === 'cliente' ? 'Cliente' : profile.role.charAt(0).toUpperCase() + profile.role.slice(1)}
+                  </p>
                 </div>
-              ))}
+                <div style={{
+                  width:          '40px',
+                  height:         '40px',
+                  borderRadius:   '50%',
+                  background:     'var(--gold)',
+                  color:          '#000',
+                  display:        'flex',
+                  alignItems:     'center',
+                  justifyContent: 'center',
+                  fontWeight:     700,
+                  fontSize:       '16px',
+                }}>
+                  {initials}
+                </div>
+              </div>
+              <div className="membership-card__holder">
+                <p style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '2px' }}>Nombre</p>
+                <p style={{ fontSize: '18px', color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
+                  {profile.displayName}
+                </p>
+              </div>
+              <div className="membership-card__meta">
+                <div>
+                  <p style={{ fontSize: '9px', color: 'var(--text-muted)' }}>Correo</p>
+                  <p style={{ fontSize: '11px', color: 'var(--gold)', wordBreak: 'break-all' }}>
+                    {profile.email}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '9px', color: 'var(--text-muted)' }}>Miembro desde</p>
+                  <p style={{ fontSize: '12px', color: 'var(--text)' }}>{profile.createdAt}</p>
+                </div>
+              </div>
             </div>
+
+            {/* Puntos */}
+            <div className="profile-box">
+              <p style={{
+                fontSize:      '10px',
+                color:         'var(--text-muted)',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                marginBottom:  '8px',
+              }}>
+                <i className="bi bi-star" /> Puntos acumulados
+              </p>
+              <p className="profile-points">
+                {profile.points.toLocaleString('es-CO')} <span>Puntos</span>
+              </p>
+              <p style={{ fontSize: '11px', color: 'var(--text-dim)', marginBottom: '14px', lineHeight: '1.5' }}>
+                Ganas 1 punto por cada $1.000 COP en tus pedidos.
+              </p>
+            </div>
+
+            {/* Resumen */}
+            <div className="profile-box">
+              <p style={{
+                fontSize:      '10px',
+                fontWeight:    600,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color:         'var(--text-muted)',
+                marginBottom:  '12px',
+              }}>
+                <i className="bi bi-bar-chart" /> Resumen
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {[
+                  { label: 'Total pedidos',   value: orders.length },
+                  { label: 'Entregados',      value: orders.filter(o => o.status === 'entregado').length },
+                  { label: 'Total gastado',   value: formatCOP(totalGastado) },
+                ].map(item => (
+                  <div key={item.label} style={{
+                    display:        'flex',
+                    justifyContent: 'space-between',
+                    fontSize:       '13px',
+                    padding:        '8px 0',
+                    borderBottom:   '1px solid var(--border)',
+                  }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{item.label}</span>
+                    <span style={{ color: 'var(--gold)', fontWeight: 600 }}>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Cerrar sesión */}
+            <button
+              onClick={handleLogout}
+              className="btn-outline"
+              style={{ width: '100%', padding: '11px', fontSize: '13px', marginTop: '4px' }}
+            >
+              <i className="bi bi-box-arrow-right" /> Cerrar sesión
+            </button>
           </div>
 
           {/* ── COLUMNA DERECHA ── */}
@@ -92,58 +203,194 @@ export default function Profile() {
               ))}
             </div>
 
-            {/* Historial de pedidos */}
+            {/* ── TAB 0: Mis pedidos ── */}
             {activeTab === 0 && (
               <div className="profile-orders">
-                {orders.map(o => (
+                {loadingOrders ? (
+                  <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>
+                    Cargando pedidos...
+                  </div>
+                ) : orders.length === 0 ? (
+                  <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>
+                    <i className="bi bi-bag" style={{ fontSize: '40px', display: 'block', marginBottom: '12px', color: 'var(--gold)' }} />
+                    Aún no tienes pedidos.
+                    <br />
+                    <Link to="/menu" className="btn-gold" style={{ marginTop: '16px', display: 'inline-block', padding: '10px 20px', fontSize: '13px' }}>
+                      Ver el menú
+                    </Link>
+                  </div>
+                ) : orders.map(o => (
                   <div key={o.id} className="profile-order">
                     <div className="profile-order__header">
                       <div>
                         <p className="profile-order__title">
-                          Experiencia '{o.items[0]}'
+                          Pedido {o.code}
                         </p>
                         <p className="profile-order__meta">
-                          Pedido nº {o.id} · Fecha: {o.date} · {o.rest}
+                          {formatDate(o.createdAt)} ·{' '}
+                          {o.delivery === 'envio' ? 'Domicilio' : 'Recogida en local'}
                         </p>
                       </div>
-                      <div style={{ textAlign:'right', flexShrink:0 }}>
-                        <span className="badge">{o.status}</span>
-                        <p style={{ fontFamily:'var(--font-serif)', fontSize:'20px', color:'var(--gold)', marginTop:'4px' }}>
-                          {o.total.toFixed(2)} €
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <span style={{
+                          fontSize:     '11px',
+                          fontWeight:   600,
+                          padding:      '3px 8px',
+                          borderRadius: '20px',
+                          background:   `${STATUS_COLOR[o.status]}22`,
+                          color:        STATUS_COLOR[o.status],
+                          whiteSpace:   'nowrap',
+                        }}>
+                          {STATUS_LABEL[o.status]}
+                        </span>
+                        <p style={{
+                          fontFamily: 'var(--font-serif)',
+                          fontSize:   '18px',
+                          color:      'var(--gold)',
+                          marginTop:  '6px',
+                        }}>
+                          {formatCOP(o.total)}
                         </p>
                       </div>
                     </div>
 
+                    {/* Items */}
                     <div className="profile-order__items">
-                      {o.items.map(item => (
-                        <span key={item} className="profile-order__item">{item}</span>
+                      {o.items.slice(0, 3).map((item, i) => (
+                        <span key={i} className="profile-order__item">
+                          x{item.quantity} {item.name}
+                          {item.cooking ? ` (${item.cooking})` : ''}
+                        </span>
                       ))}
+                      {o.items.length > 3 && (
+                        <span className="profile-order__item" style={{ color: 'var(--text-dim)' }}>
+                          +{o.items.length - 3} más
+                        </span>
+                      )}
                     </div>
 
                     <div className="profile-order__footer">
-                      <span style={{ fontSize:'11px', color:'var(--gold)' }}>
-                        +{o.pts} Puntos Gourmet acumulados en este pedido
+                      <span style={{ fontSize: '11px', color: 'var(--gold)' }}>
+                        <i className="bi bi-star" />{' '}
+                        +{Math.floor(o.total / 1000)} puntos ganados
                       </span>
-                      <div style={{ display:'flex', gap:'8px' }}>
-                        <button className="btn-outline" style={{ fontSize:'10px', padding:'7px 12px' }}>
-                          ⬇ Descargar Factura Oficial
-                        </button>
-                        <button className="btn-gold" style={{ fontSize:'10px', padding:'7px 12px' }}>
-                          🔄 Repetir Pedido Culinario
-                        </button>
-                      </div>
+                      <Link
+                        to="/seguimiento"
+                        state={{ code: o.code }}
+                        className="btn-outline"
+                        style={{ fontSize: '11px', padding: '7px 12px' }}
+                      >
+                        <i className="bi bi-search" /> Ver estado
+                      </Link>
                     </div>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Otras tabs — placeholder */}
-            {activeTab !== 0 && (
-              <div className="profile-tab-placeholder">
-                <p>🔒</p>
-                <p>Sección en construcción</p>
-                <p style={{ fontSize:'12px', color:'var(--text-dim)' }}>Disponible en la próxima actualización</p>
+            {/* ── TAB 1: Mis datos ── */}
+            {activeTab === 1 && (
+              <div style={{ padding: '24px' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '20px' }}>
+                  Información de la cuenta
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {[
+                    { label: 'Nombre',          value: profile.displayName, icon: 'bi-person'   },
+                    { label: 'Correo',           value: profile.email,       icon: 'bi-envelope' },
+                    { label: 'Rol',              value: profile.role,        icon: 'bi-shield'   },
+                    { label: 'Miembro desde',    value: profile.createdAt,   icon: 'bi-calendar3'},
+                  ].map(item => (
+                    <div key={item.label} style={{
+                      background:   'var(--surface)',
+                      border:       '1px solid var(--border)',
+                      borderRadius: 'var(--radius)',
+                      padding:      '14px 16px',
+                      display:      'flex',
+                      alignItems:   'center',
+                      gap:          '12px',
+                    }}>
+                      <i className={`bi ${item.icon}`} style={{ color: 'var(--gold)', fontSize: '16px', flexShrink: 0 }} />
+                      <div>
+                        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px' }}>
+                          {item.label}
+                        </p>
+                        <p style={{ fontSize: '14px', color: 'var(--text)', textTransform: item.label === 'Rol' ? 'capitalize' : 'none' }}>
+                          {item.value}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── TAB 2: Seguridad ── */}
+            {activeTab === 2 && (
+              <div style={{ padding: '24px' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '8px' }}>
+                  Seguridad
+                </h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '24px' }}>
+                  Gestiona la seguridad de tu cuenta.
+                </p>
+
+                <div style={{
+                  background:   'var(--surface)',
+                  border:       '1px solid var(--border)',
+                  borderRadius: 'var(--radius)',
+                  padding:      '20px',
+                  display:      'flex',
+                  alignItems:   'center',
+                  justifyContent: 'space-between',
+                  gap:          '16px',
+                  flexWrap:     'wrap',
+                }}>
+                  <div>
+                    <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)', marginBottom: '4px' }}>
+                      <i className="bi bi-lock" /> Contraseña
+                    </p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                      Recibirás un correo con el enlace para cambiar tu contraseña.
+                    </p>
+                  </div>
+                  <Link
+                    to="/recuperar"
+                    className="btn-outline"
+                    style={{ fontSize: '12px', padding: '10px 16px', whiteSpace: 'nowrap' }}
+                  >
+                    Cambiar contraseña
+                  </Link>
+                </div>
+
+                <div style={{
+                  background:   'var(--surface)',
+                  border:       '1px solid var(--border)',
+                  borderRadius: 'var(--radius)',
+                  padding:      '20px',
+                  marginTop:    '12px',
+                  display:      'flex',
+                  alignItems:   'center',
+                  justifyContent: 'space-between',
+                  gap:          '16px',
+                  flexWrap:     'wrap',
+                }}>
+                  <div>
+                    <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)', marginBottom: '4px' }}>
+                      <i className="bi bi-box-arrow-right" /> Cerrar sesión
+                    </p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                      Cierra sesión en este dispositivo.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="btn-outline"
+                    style={{ fontSize: '12px', padding: '10px 16px', whiteSpace: 'nowrap', color: '#ef4444', borderColor: '#ef444460' }}
+                  >
+                    Cerrar sesión
+                  </button>
+                </div>
               </div>
             )}
           </div>
