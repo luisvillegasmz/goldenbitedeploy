@@ -7,8 +7,9 @@ import './ProductDetail.css'
 
 export default function ProductDetail() {
   const { id }      = useParams<{ id: string }>()
+  const navigate    = useNavigate()
+  const { addItem } = useCart()
   const { dishes, loading } = useDishes()
-  // ...
   const product = dishes.find(d => d.id === id)
 
   if (loading) return (

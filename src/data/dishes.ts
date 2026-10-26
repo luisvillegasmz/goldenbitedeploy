@@ -12,6 +12,7 @@ export interface Dish {
   cookingOptions?: { id: string; label: string; sublabel: string }[]
   extras?:         { id: string; label: string; desc: string; price: number }[]
   allergens?:      string[]
+  active?:         boolean
 }
 
 export const categories = [

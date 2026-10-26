@@ -21,7 +21,7 @@ const formatCOP = (n: number) =>
 export default function Checkout() {
   const navigate = useNavigate()
   const { items, total, clearCart } = useCart()
-  const { user, profile } = useAuth()
+  const { user } = useAuth()
 
   const [delivery,     setDelivery]     = useState<DeliveryMode>('envio')
   const [payTab,       setPayTab]       = useState<PaymentTab>('tarjeta')

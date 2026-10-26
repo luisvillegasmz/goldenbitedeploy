@@ -87,7 +87,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               {profile?.displayName ?? user?.email ?? 'Admin'}
             </p>
             <p className="admin-sidebar__user-role">
-              Nivel {profile?.membership ?? '—'}
+              Nivel {profile?.role ?? '—'}
             </p>
           </div>
           <button

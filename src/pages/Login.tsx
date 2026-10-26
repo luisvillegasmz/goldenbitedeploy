@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from '../firebase'
@@ -9,10 +9,10 @@ import './Login.css'
 
 export default function Login() {
   const navigate             = useNavigate()
-  const location             = useLocation()
+
   const { signInWithGoogle } = useAuth()
 
-  const from = (location.state as any)?.from?.pathname || '/'
+
 
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
