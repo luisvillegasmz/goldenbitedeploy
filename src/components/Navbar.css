@@ -89,6 +89,7 @@
 .navbar__user-avatar:hover { background: rgba(201,168,76,0.35); }
 
 .navbar__logout {
+  height: 50px;
   background: none; border: none;
   color: var(--text-muted); font-size: 16px;
   cursor: pointer; padding: 4px;

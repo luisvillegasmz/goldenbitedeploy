@@ -58,7 +58,7 @@ export default function Navbar() {
                 </div>
               </Link>
               <button className="navbar__logout" onClick={handleLogout} title="Cerrar sesión">
-                ⎋
+                <i className="bi bi-box-arrow-right" style={{ fontSize: '20px' }} />
               </button>
             </div>
           ) : (
