@@ -1,5 +1,5 @@
 import AdminLayout from '../../components/adminlayout'
-import './AdminAnalytics.css'
+import './adminanalytics.css'
 
 const sections = [
   { name:'Cortes Nobles & Grill',    pct:34, rev:62400 },

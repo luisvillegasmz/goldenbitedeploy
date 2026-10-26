@@ -5,7 +5,7 @@ import AdminLayout from '../../components/adminlayout'
 import { formatCOP } from '../../utils/format'
 import type { Order } from '../../types/order'
 import { STATUS_LABEL, STATUS_COLOR, timeAgo } from '../../types/order'
-import './AdminDashboard.css'
+import './admindashboard.css'
 
 export default function AdminDashboard() {
   const [orders,  setOrders]  = useState<Order[]>([])

@@ -4,7 +4,7 @@ import { db } from '../../firebase'
 import { useAuth } from '../../context/AuthContext'
 import type { UserRole } from '../../context/AuthContext'
 import AdminLayout from '../../components/adminlayout'
-import './AdminUsers.css'
+import './adminusers.css'
 
 interface FirestoreUser {
   uid:         string

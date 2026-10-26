@@ -6,7 +6,7 @@ import {
 import { db } from '../../firebase'
 import AdminLayout from '../../components/adminlayout'
 import { formatCOP } from '../../utils/format'
-import './AdminPromotions.css'
+import './adminpromotions.css'
 
 interface Descuento {
   id:          string

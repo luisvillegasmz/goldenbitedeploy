@@ -8,7 +8,7 @@ import AdminLayout from '../../components/adminlayout'
 import { formatCOP } from '../../utils/format'
 import { dishes as staticDishes } from '../../data/dishes'
 import type { Dish } from '../../data/dishes'
-import './AdminMenu.css'
+import './adminmenu.css'
 
 const CATEGORIES = [
   'Entradas', 'Sopas y Caldos', 'Parrilla',
